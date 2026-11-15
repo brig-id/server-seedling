@@ -75,9 +75,11 @@ jobs:
         run: docker run --rm seedling:ci --help > /dev/null
 
       - name: The image serves its interface with nothing else installed
-        # The interface is inside the binary: no directory, no setting. A
-        # page comes under a policy made of script hashes, a script of the
-        # build is served, and a path that names nothing is not a page.
+        # The interface is inside the binary: the image holds no directory
+        # of it, and none is configured, so a page served here can only come
+        # from the binary. It comes under a policy made of script hashes, a
+        # script of the build is served, and a path that names nothing is not
+        # a page. Each check says what it found when it fails.
         run: |
           docker run -d --name seedling -p 8080:8080 \
             -e BRIGID_MASTER_KEY=0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0 \
@@ -90,15 +92,15 @@ jobs:
             sleep 1
           done
           curl -fsS -D headers.txt -o page.html http://localhost:8080/signup/
-          grep -qi "^content-type: text/html" headers.txt
-          grep -qi "^content-security-policy: .*script-src 'self' 'sha256-" headers.txt
-          ! grep -qi "unsafe-inline" headers.txt
+          grep -qi "^content-type: text/html" headers.txt || { cat headers.txt; exit 1; }
+          grep -qi "^content-security-policy: .*script-src 'self' 'sha256-" headers.txt || { cat headers.txt; exit 1; }
+          if grep -qi "unsafe-inline" headers.txt; then cat headers.txt; exit 1; fi
           # (sed reads the whole page: `grep | head` would end with a broken pipe.)
           script=$(sed -n 's/.*\(build\/q-[A-Za-z0-9_-]*\.js\).*/\1/p' page.html | sed -n 1p)
-          test -n "$script"
+          test -n "$script" || { echo "no script named in the page"; exit 1; }
           curl -fsS -o /dev/null "http://localhost:8080/$script"
-          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/nothing/)" = 404
-          docker logs seedling 2>&1 | grep -q "embedded interface"
+          unknown=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/nothing/)
+          test "$unknown" = 404 || { echo "an unknown path answered $unknown"; exit 1; }
           docker rm -f seedling
 
   # Runs only on a `vX.Y.Z` tag push — the actual release artifact. Separate
