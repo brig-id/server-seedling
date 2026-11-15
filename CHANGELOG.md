@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-15
+
+### Security
+
+- API responses (JSON and redirects) carry a Content Security Policy that loads
+  nothing and names no origin (`default-src 'none'`). They still allowed a
+  photo service the interface stopped using (brig-id/core#101).
+
+### Added
+
+- The interface has a light theme, which follows the system until the person
+  chooses, with its own embedded background (brig-id/app#66).
+
 ## [0.4.0] - 2026-11-14
 
 The first release under the name seedling, and a new start: it opens no
