@@ -93,7 +93,8 @@ jobs:
           grep -qi "^content-type: text/html" headers.txt
           grep -qi "^content-security-policy: .*script-src 'self' 'sha256-" headers.txt
           ! grep -qi "unsafe-inline" headers.txt
-          script=$(grep -o 'build/q-[A-Za-z0-9_-]*\.js' page.html | head -1)
+          # (sed reads the whole page: `grep | head` would end with a broken pipe.)
+          script=$(sed -n 's/.*\(build\/q-[A-Za-z0-9_-]*\.js\).*/\1/p' page.html | sed -n 1p)
           test -n "$script"
           curl -fsS -o /dev/null "http://localhost:8080/$script"
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/nothing/)" = 404
