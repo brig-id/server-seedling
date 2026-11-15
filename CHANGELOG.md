@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- A site can ask people for attributes of the identity they present
+  (brig-id/core#91): first name, last name, username, e-mail address,
+  language, time zone. `seedling client add` takes `--optional <attribute>`
+  and `--required <attribute>`, `seedling client attributes <client_id>`
+  changes it for a registered site, and `seedling client list` shows it. A
+  site asks with the `profile` and `email` scopes; each person sees the values
+  and decides. A site registered without any of these options keeps receiving
+  an identifier and nothing else, and is refused if it asks for more.
+
 ## [0.4.1] - 2026-11-15
 
 ### Security
