@@ -96,6 +96,38 @@ async fn rotate_key_cli_round_trip_login_works_with_new_key() {
         .await
         .unwrap();
     assert_eq!(resp.status(), 204, "register/finish should succeed");
+    // The onboarding: a recovery code, then two identities, one of which has
+    // attributes. All of it is encrypted under the master key.
+    let cookie = resp.headers()[reqwest::header::SET_COOKIE]
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_string();
+    let resp = client
+        .post(format!("{base_url}/account/recovery-code"))
+        .header(reqwest::header::COOKIE, &cookie)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+    for identity in [
+        json!({ "template": "personal" }),
+        json!({
+            "template": "work",
+            "attributes": { "email": "ada@work.example", "given_name": "Ada" },
+        }),
+    ] {
+        let resp = client
+            .post(format!("{base_url}/account/identities"))
+            .header(reqwest::header::COOKIE, &cookie)
+            .json(&identity)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 201);
+    }
 
     let identities_before =
         sign_in_and_list_identities(&client, &base_url, &mut auth_client, &origin, username).await;
@@ -146,7 +178,13 @@ async fn rotate_key_cli_round_trip_login_works_with_new_key() {
         identities_before, identities_after,
         "the account's identities read the same under the new key"
     );
-    assert_eq!(identities_before.len(), 3, "the starter identities");
+    assert_eq!(identities_before.len(), 2);
+    assert!(
+        identities_before
+            .iter()
+            .any(|(_, described)| described.contains("ada@work.example")),
+        "attributes read the same under the new key: {identities_before:?}"
+    );
 
     stop_seedling(child);
 }
@@ -168,7 +206,8 @@ fn client_for(base_url: &str) -> reqwest::Client {
 }
 
 /// Signs in with the passkey held by `auth_client` and returns the account's
-/// identities (id and name): decrypting them needs the current master key.
+/// identities (id, then name and attributes): decrypting them needs the
+/// current master key.
 async fn sign_in_and_list_identities(
     client: &reqwest::Client,
     base_url: &str,
@@ -214,7 +253,7 @@ async fn sign_in_and_list_identities(
         .map(|i| {
             (
                 i["id"].as_str().unwrap().to_string(),
-                i["name"].as_str().unwrap().to_string(),
+                format!("{} {}", i["name"].as_str().unwrap(), i["attributes"]),
             )
         })
         .collect()

@@ -8,8 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- A new account starts with no identity: the onboarding of the interface
+  proposes some and creates the ones the person keeps. Until an account has
+  its recovery code, its identities and the applications are closed to it
+  (brig-id/core#98).
+
 ### Added
 
+- A person can delete their account, after a passkey ceremony done for that
+  purpose (brig-id/core#98).
 - A site can ask people for attributes of the identity they present
   (brig-id/core#91): first name, last name, username, e-mail address,
   language, time zone. `seedling client add` takes `--optional <attribute>`
