@@ -553,7 +553,25 @@ async fn a_site_registered_from_the_command_line_signs_a_person_in() {
         .unwrap();
     assert_eq!(resp.status(), 204);
     let cookie = session_cookie(&resp);
-    let identities = json_body(
+    // The onboarding: a recovery code first, without which the account can do
+    // nothing else, then an identity. The server makes none by itself.
+    let closed = server
+        .client
+        .get(format!("{base}/account/identities"))
+        .header(reqwest::header::COOKIE, &cookie)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(closed.status(), 403, "no recovery code yet");
+    let resp = server
+        .client
+        .post(format!("{base}/account/recovery-code"))
+        .header(reqwest::header::COOKIE, &cookie)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+    let listed = json_body(
         server
             .client
             .get(format!("{base}/account/identities"))
@@ -563,7 +581,20 @@ async fn a_site_registered_from_the_command_line_signs_a_person_in() {
             .unwrap(),
     )
     .await;
-    let identity = identities[0]["id"].as_str().expect("a starter identity");
+    assert_eq!(listed, json!([]), "the server creates no identity");
+    let created = json_body(
+        server
+            .client
+            .post(format!("{base}/account/identities"))
+            .header(reqwest::header::COOKIE, &cookie)
+            .json(&json!({ "template": "personal" }))
+            .send()
+            .await
+            .unwrap(),
+    )
+    .await;
+    let identity = created["id"].as_str().expect("an identity").to_owned();
+    let identity = identity.as_str();
 
     // -- the site sends the browser: no cookie, no Origin, no redirect followed --
     let browser = reqwest::Client::builder()
