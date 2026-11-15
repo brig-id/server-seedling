@@ -12,8 +12,11 @@ issues, pull requests. No exceptions.
 
 - Binary `seedling` (`src/main.rs`) — the only entry point
 - Configuration loading (`seedling.toml` + env vars via `figment`)
-- Serving the pre-built `web` UI as static files (`server.ui_dist_dir`, SPA fallback) —
-  the reference mechanism `server-grove`/`server-forest` are expected to follow
+- Serving the interface (`src/ui.rs`): embedded in the executable at compile time
+  (`build.rs`, `BRIGID_UI_DIST`; a release build fails without it), or read from
+  `server.ui_dist_dir`, the development option. A page is a file of the build, an unknown
+  path is `404`, and the pages are served under the policy made of the build's script
+  hashes, never `'unsafe-inline'`
 - Docker multi-stage build + distroless image
 - Docker Compose deploy setup (`deploy/`)
 - E2E smoke tests (`tests/e2e/`)

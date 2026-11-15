@@ -28,7 +28,9 @@ services:
       - /tmp:size=64m,mode=1777
     volumes:
       - seedling-data-dev:/data
-      # Pre-built Qwik UI static files. Run `pnpm build` in brig-id/app first.
+      # A build of the interface to serve instead of the one the image
+      # carries: run `pnpm build` in brig-id/app first, then restart. Without
+      # a build there, the image's own interface is served.
       - /workspaces/app/dist:/ui/dist:ro
     environment:
       RUST_LOG: "brigid_api=debug,seedling=debug,tower_http=debug,warn"
@@ -37,7 +39,7 @@ services:
       BRIGID_SERVER__HOST: "0.0.0.0"
       BRIGID_SERVER__PORT: "8080"
       BRIGID_DATABASE__PATH: "/data/brigid.db"
-      # Serve the Qwik UI static files from the bind-mounted dist directory.
+      # The development option: serve the bind-mounted build.
       BRIGID_SERVER__UI_DIST_DIR: "/ui/dist"
     ports:
       - "8080:8080"

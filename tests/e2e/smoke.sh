@@ -133,13 +133,14 @@ check "GET /.well-known/jwks.json — has keys array" \
   "${BASE_URL}/.well-known/jwks.json" "200" \
   '.keys | length > 0'
 
-# UI: /login and /register must return the Qwik SPA index.html.
-# This requires BRIGID_SERVER__UI_DIST_DIR to be set and the dist to exist.
-# If the server is running without a UI dist dir, these will return 404 — skip
-# these checks with SKIP_UI_CHECKS=1 when running in API-only mode.
+# The interface: a released server carries it; a development build serves the
+# directory named by BRIGID_SERVER__UI_DIST_DIR, or none (then skip these
+# checks with SKIP_UI_CHECKS=1). A page is a file of the build, and a path
+# that names nothing is not a page.
 if [ "${SKIP_UI_CHECKS:-0}" != "1" ]; then
-  check "GET /login    → 200 + HTML (Qwik SPA)" "${BASE_URL}/login"    "200"
-  check "GET /register → 200 + HTML (Qwik SPA)" "${BASE_URL}/register" "200"
+  check "GET /         → 200 (the sign-in page)" "${BASE_URL}/"         "200"
+  check "GET /signup/  → 200 (the sign-up page)" "${BASE_URL}/signup/"  "200"
+  check "GET /nothing/ → 404"                    "${BASE_URL}/nothing/" "404"
 fi
 
 # Auth endpoints — missing body should return 415 (Unsupported Media Type) or 422
