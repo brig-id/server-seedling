@@ -21,7 +21,7 @@ use std::{
     time::Duration,
 };
 
-use seedling::{apply_ui_fallback, metrics, probe};
+use seedling::{Ui, apply_ui, metrics, probe};
 
 use clap::{Parser, Subcommand};
 use tracing_subscriber::{EnvFilter, fmt};
@@ -543,13 +543,45 @@ async fn main() {
     let state = Arc::new(state);
     let api_router = build_router(state, &cors_origins);
 
-    // Optionally serve the pre-built Qwik UI from the configured directory.
-    // API routes always take priority; any unmatched path is handled by
-    // ServeDir, which falls back to `index.html` for SPA client-side routing.
-    if let Some(ref dir) = cfg.server.ui_dist_dir {
-        tracing::info!(path = %dir.display(), "serving UI static files");
-    }
-    let app = apply_ui_fallback(api_router, cfg.server.ui_dist_dir.as_deref());
+    // The interface. A released build carries it; `server.ui_dist_dir`, the
+    // development option, names the directory of another build to serve
+    // instead. A directory that cannot be served is fatal, unless the
+    // executable has its own interface to fall back on: a setting left over
+    // from the time the interface was a directory must not stop a server.
+    // Without either, the server is its API alone. API routes always take
+    // priority.
+    let from_directory = cfg
+        .server
+        .ui_dist_dir
+        .as_deref()
+        .map(|dir| (dir, Ui::from_dir(dir)));
+    let ui = match (from_directory, Ui::embedded()) {
+        (Some((dir, Ok(ui))), _) => {
+            tracing::info!(path = %dir.display(), files = ui.len(), "serving the interface from a directory");
+            Some(ui)
+        }
+        (Some((dir, Err(e))), Some(ui)) => {
+            tracing::warn!(
+                path = %dir.display(),
+                error = %e,
+                "server.ui_dist_dir cannot be served: using the interface this executable carries"
+            );
+            Some(ui)
+        }
+        (Some((_, Err(e))), None) => {
+            eprintln!("FATAL: server.ui_dist_dir: {e}");
+            std::process::exit(1);
+        }
+        (None, Some(ui)) => {
+            tracing::info!(files = ui.len(), "serving the embedded interface");
+            Some(ui)
+        }
+        (None, None) => {
+            tracing::info!("no interface: this build carries none and no directory is configured");
+            None
+        }
+    };
+    let app = apply_ui(api_router, ui.map(Arc::new));
 
     // -- Metrics -------------------------------------------------------------
     // Counted on the public app, served on a separate internal listener.

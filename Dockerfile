@@ -2,9 +2,10 @@
 # brig·id seedling — multi-stage production image
 #
 # Three stages:
-#   1. ui-builder  — Node.js: build the Qwik UI → dist/
-#   2. rust-builder — Rust: compile the seedling binary (release)
-#   3. runtime     — distroless: seedling binary + UI static files
+#   1. ui-builder  — Node.js: build the interface → dist/
+#   2. rust-builder — Rust: compile the seedling binary (release), with the
+#                     interface embedded in it
+#   3. runtime     — distroless: the seedling binary, and nothing else
 #
 # Prepare the UI source before building (option A — local copy):
 #   cp -r /workspaces/app ./ui   # or: ln -sf ../app ui
@@ -27,9 +28,8 @@
 # source (package.json, src/, public/, …). A placeholder `ui/.gitkeep` is
 # committed to the repo; populate it before running `docker build`.
 #
-# If no package.json is found (placeholder only), the stage creates an empty
-# dist/ so that the runtime stage still copies a valid (though empty) path.
-# In that case, set BRIGID_SERVER__UI_DIST_DIR to an actual dist in production.
+# Without it (placeholder only) the image does not build: a released server
+# carries its interface, and the Rust stage refuses to compile without one.
 #
 # The interface builds from the public npm registry alone: no token, no key.
 FROM node:22-slim AS ui-builder
@@ -43,7 +43,8 @@ RUN if [ -f package.json ]; then \
       pnpm install --frozen-lockfile && \
       pnpm build; \
     else \
-      mkdir -p dist; \
+      echo "ui/ holds no interface: copy or check out brig-id/app there" >&2; \
+      exit 1; \
     fi
 
 # ---------------------------------------------------------------------------
@@ -115,8 +116,12 @@ RUN mkdir src && echo 'fn main() {}' > src/main.rs && \
     cargo build --release --locked && \
     rm -rf src
 
-# Copy real source files.
+# Copy real source files, and the built interface for `build.rs` to embed:
+# a release build fails without it, and without its list of script hashes.
+COPY build.rs ./
 COPY src/ ./src/
+COPY --from=ui-builder /ui/dist /ui-dist
+ENV BRIGID_UI_DIST=/ui-dist
 
 # Force recompile of the application code (preserve cached deps).
 RUN touch src/main.rs src/lib.rs && \
@@ -144,9 +149,7 @@ FROM gcr.io/distroless/cc-debian12@sha256:e5d81ddde149641e2a9ba55be4545bc125c67d
 # Copy the compiled binary from the Rust build stage.
 COPY --from=rust-builder /build/target/release/seedling /seedling
 
-# Copy the pre-built Qwik UI static files from the Node.js build stage.
-# These are served by the seedling binary under BRIGID_SERVER__UI_DIST_DIR.
-COPY --from=ui-builder /ui/dist /ui/dist
+# The interface is inside the binary: nothing else to copy.
 
 # Nonroot-owned mount point for the SQLite database (see the /data comment
 # in the rust-builder stage). Numeric UID:GID avoids relying on name

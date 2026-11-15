@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **The interface is inside the executable** (#74). It is embedded at compile
+  time from the directory named by `BRIGID_UI_DIST`, the text files
+  compressed; a release build fails without it, or without its list of script
+  hashes. The container image holds the binary and nothing else.
+  `server.ui_dist_dir` remains as a development option: a build of the
+  interface in that directory is served instead. A directory that cannot be
+  served stops a server that has no interface of its own, and is ignored with
+  a warning by one that has (so a deployment that still sets it keeps
+  working).
+- **A path that names nothing answers `404`.** Until now any unknown path was
+  answered with the sign-in page and `200`.
+- Files named after their content (`/build/`, `/assets/`) are cached for good;
+  pages carry an `ETag` and are checked at each visit.
+- **No `'unsafe-inline'` any more**: a build of the interface without its
+  list of script hashes is not served at all.
 - A new account starts with no identity: the onboarding of the interface
   proposes some and creates the ones the person keeps. Until an account has
   its recovery code, its identities and the applications are closed to it

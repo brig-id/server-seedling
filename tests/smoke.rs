@@ -36,8 +36,8 @@ impl Drop for TestServer {
     }
 }
 
-/// Spawns `seedling` with a fresh temp DB and a minimal fake UI dist (so
-/// `GET /login` has something to serve), waits for it to start listening,
+/// Spawns `seedling` with a fresh temp DB and a minimal build of the
+/// interface (a page and its list of script hashes), waits for it to start listening,
 /// and returns a client pointed at it. Each call gets its own process — and
 /// so its own in-memory rate-limit bucket — which is what keeps
 /// `rate_limit_21st_auth_request_returns_429` from bleeding into the other
@@ -58,6 +58,12 @@ fn start_seedling_with(extra_env: &[(&str, &str)]) -> TestServer {
         b"<!DOCTYPE html><html><body>smoke-test-ui</body></html>",
     )
     .expect("write fake index.html");
+    // Without its list of script hashes a directory is not served at all.
+    fs::write(
+        ui_dir.path().join("csp-hashes.json"),
+        br#"{"script":["'sha256-AAAA'"],"style":[]}"#,
+    )
+    .expect("write the list of hashes");
 
     let mut child = Command::new(seedling_bin())
         .env("BRIGID_MASTER_KEY", TEST_MASTER_KEY)
@@ -191,22 +197,71 @@ async fn jwks_has_non_empty_keys() {
 }
 
 #[tokio::test]
-async fn login_page_returns_html() {
+async fn the_interface_is_served_and_an_unknown_path_is_not_a_page() {
     let server = start_seedling();
+    let resp = server
+        .client
+        .get(format!("{}/", server.base_url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+    let header = |name: &str| {
+        resp.headers()
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default()
+            .to_string()
+    };
+    assert!(header("content-type").contains("text/html"));
+    // Under the policy made of the build's hashes, and no weaker one.
+    let csp = header("content-security-policy");
+    assert!(csp.contains("script-src 'self' 'sha256-AAAA'"), "{csp}");
+    assert!(!csp.contains("unsafe-inline"), "{csp}");
+    assert!(resp.text().await.unwrap().contains("smoke-test-ui"));
+
+    // No page answers for the paths that name nothing.
     let resp = server
         .client
         .get(format!("{}/login", server.base_url))
         .send()
         .await
         .unwrap();
-    assert_eq!(resp.status(), 200);
-    let content_type = resp
-        .headers()
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or_default()
-        .to_string();
-    assert!(content_type.contains("text/html"), "got {content_type}");
+    assert_eq!(resp.status(), 404);
+}
+
+/// A directory that is not a build of the interface (here: without its list
+/// of script hashes) stops a server that carries no interface of its own.
+/// One that does carries on with its own: this test is about the first.
+#[test]
+fn a_directory_without_its_list_of_hashes_is_not_served() {
+    if seedling::Ui::embedded().is_some() {
+        return;
+    }
+    let ui_dir = tempfile::TempDir::new().expect("tempdir");
+    fs::write(ui_dir.path().join("index.html"), b"<html></html>").unwrap();
+    let db_dir = tempfile::TempDir::new().expect("tempdir");
+    let out = Command::new(seedling_bin())
+        .env("BRIGID_MASTER_KEY", TEST_MASTER_KEY)
+        .env("BRIGID_SERVER__DOMAIN", "localhost")
+        .env("BRIGID_SERVER__HOST", "127.0.0.1")
+        .env("BRIGID_SERVER__PORT", free_port().to_string())
+        .env(
+            "BRIGID_DATABASE__PATH",
+            db_dir.path().join("smoke.db").display().to_string(),
+        )
+        .env(
+            "BRIGID_SERVER__UI_DIST_DIR",
+            ui_dir.path().display().to_string(),
+        )
+        .output()
+        .expect("run seedling");
+    assert!(!out.status.success(), "the server must not start");
+    let said = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        said.contains("server.ui_dist_dir") && said.contains("csp-hashes.json"),
+        "{said}"
+    );
 }
 
 // ---------------------------------------------------------------------------

@@ -74,6 +74,32 @@ jobs:
         # when the binary starts ("GLIBC_2.38 not found", v0.2.0).
         run: docker run --rm seedling:ci --help > /dev/null
 
+      - name: The image serves its interface with nothing else installed
+        # The interface is inside the binary: no directory, no setting. A
+        # page comes under a policy made of script hashes, a script of the
+        # build is served, and a path that names nothing is not a page.
+        run: |
+          docker run -d --name seedling -p 8080:8080 \
+            -e BRIGID_MASTER_KEY=0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0 \
+            -e BRIGID_SERVER__DOMAIN=localhost \
+            -e BRIGID_SERVER__HOST=0.0.0.0 \
+            -e BRIGID_SERVER__PUBLIC_URL=http://localhost:8080 \
+            seedling:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8080/health > /dev/null && break
+            sleep 1
+          done
+          curl -fsS -D headers.txt -o page.html http://localhost:8080/signup/
+          grep -qi "^content-type: text/html" headers.txt
+          grep -qi "^content-security-policy: .*script-src 'self' 'sha256-" headers.txt
+          ! grep -qi "unsafe-inline" headers.txt
+          script=$(grep -o 'build/q-[A-Za-z0-9_-]*\.js' page.html | head -1)
+          test -n "$script"
+          curl -fsS -o /dev/null "http://localhost:8080/$script"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/nothing/)" = 404
+          docker logs seedling 2>&1 | grep -q "embedded interface"
+          docker rm -f seedling
+
   # Runs only on a `vX.Y.Z` tag push — the actual release artifact. Separate
   # from the `docker` validation job above (which stays fast, single-arch,
   # build-only) so every PR/branch push doesn't publish an image.

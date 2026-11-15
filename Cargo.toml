@@ -38,7 +38,10 @@ tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 # HTTP / TLS
 axum = "0.8"
 axum-server = { version = "0.8", features = ["tls-rustls"] }
-tower-http = { version = "0.7", features = ["fs", "set-header"] }
+tower-http = { version = "0.7", features = ["set-header"] }
+# The embedded interface is compressed at build time (`build.rs`); a client
+# that takes no compression gets it unpacked.
+flate2 = "1"
 # Only used to install a default process-wide `CryptoProvider` at startup —
 # see the call site in main.rs for why this is needed.
 rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs"] }
@@ -48,6 +51,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 url = "2"
 time = "0.3"
+
+[build-dependencies]
+flate2 = "1"
 
 [dev-dependencies]
 figment = { version = "0.10", features = ["test"] }

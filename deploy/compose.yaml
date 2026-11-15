@@ -67,11 +67,7 @@ services:
       # Prometheus metrics on the internal overlay network only: not in
       # `ports`, and Caddy only proxies 8080. Scrape seedling:9100/metrics.
       BRIGID_SERVER__METRICS_PORT: "9100"
-      # Must match the Dockerfile's COPY destination for the pre-built Qwik
-      # UI (`COPY --from=ui-builder /ui/dist /ui/dist`). Without this, the
-      # binary's ui_dist_dir config stays unset and apply_ui_fallback()
-      # never serves any static files — every non-API route 404s.
-      BRIGID_SERVER__UI_DIST_DIR: "/ui/dist"
+      # No setting for the interface: it is inside the binary.
       BRIGID_DATABASE__PATH: "/data/brigid.db"
       # Single-quoted so the embedded `["..."]` JSON-style brackets and
       # double quotes pass through to figment verbatim — Compose still
