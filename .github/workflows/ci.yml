@@ -55,7 +55,7 @@ jobs:
           # floating `main` means two builds of the same server-seedling commit
           # could embed different UI code depending on when they ran. Bump
           # deliberately when app ships a change meant to land in seedling.
-          ref: ce67eebde86fd693df7d711d27c67e141adffb31 # main @ 2026-11-15
+          ref: 78cb1e436e351a280412a6e17256b93cfbfc8def # main @ 2026-11-15 (v0.3.0)
           path: ui
 
       - name: Set up Docker Buildx
@@ -135,7 +135,7 @@ jobs:
           # bumping. Once app/core/crypto have their own tagged releases,
           # this should point at the app tag that belongs to this seedling
           # release rather than a bare commit.
-          ref: ce67eebde86fd693df7d711d27c67e141adffb31 # main @ 2026-11-15
+          ref: 78cb1e436e351a280412a6e17256b93cfbfc8def # main @ 2026-11-15 (v0.3.0)
           path: ui
 
       - name: Set up QEMU (cross-arch emulation for the arm64 build)

@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-15
+
+The first release of step 2. A database of 0.4 is upgraded in place (one new
+schema script). An account that has no recovery code is sent to create one at
+its next sign-in, before anything else.
+
 ### Changed
 
 - **The interface is inside the executable** (#74). It is embedded at compile
@@ -33,7 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - A person can delete their account, after a passkey ceremony done for that
-  purpose (brig-id/core#98).
+  purpose (brig-id/core#98), and download their data first: both are on a new
+  "Account" page of the interface (brig-id/app#68).
+- The interface (0.3.0) shows, on the page that links an identity to a site,
+  each attribute asked for with the value that would be sent, and nothing is
+  ticked for the person. Each identity has a page with what it can share and
+  what each site was given, where it can be withdrawn (brig-id/app#68).
 - A site can ask people for attributes of the identity they present
   (brig-id/core#91): first name, last name, username, e-mail address,
   language, time zone. `seedling client add` takes `--optional <attribute>`
