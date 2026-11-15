@@ -14,6 +14,7 @@
 mod config;
 
 use std::{
+    collections::BTreeMap,
     net::SocketAddr,
     path::{Path, PathBuf},
     sync::Arc,
@@ -28,6 +29,7 @@ use url::Url;
 
 use brigid_api::{AppState, build_router};
 use brigid_crypto::MasterKey;
+use brigid_identity::{Attribute, Need};
 use brigid_oidc::OidcSigningKey;
 use brigid_store::EncryptedStore;
 use brigid_webauthn::WebauthnService;
@@ -110,8 +112,21 @@ enum ClientCommand {
         /// browser or on a phone): no secret is issued.
         #[arg(long)]
         public: bool,
+        #[command(flatten)]
+        asks: Asks,
     },
-    /// List the registered sites.
+    /// Say what a registered site may ask people to share. This replaces
+    /// what it could ask before; with no option, it may ask for nothing
+    /// more than an identifier. What people already accepted stays
+    /// recorded, and an attribute taken away is no longer sent.
+    Attributes {
+        /// The `client_id` printed by `add` and `list`.
+        client_id: String,
+        #[command(flatten)]
+        asks: Asks,
+    },
+    /// List the registered sites: identifier, kind, name, redirect URIs and
+    /// what each may ask for, separated by tabs.
     List,
     /// Remove a site. People can no longer sign in to it through this
     /// server, and the identity each person chose for it is forgotten.
@@ -119,6 +134,68 @@ enum ClientCommand {
         /// The `client_id` printed by `add` and `list`.
         client_id: String,
     },
+}
+
+/// What a site may ask people to share about the identity they present.
+/// Without any of it, a site receives an identifier and nothing else.
+///
+/// The attributes are `given_name`, `family_name`, `preferred_username`,
+/// `email`, `locale` and `zoneinfo`. A site asks for them with the `profile`
+/// and `email` scopes, and each person decides what they share.
+#[derive(clap::Args)]
+struct Asks {
+    /// An attribute the site may ask for and works without: a person can
+    /// refuse it and still sign in. Repeat for several.
+    #[arg(long = "optional", value_name = "ATTRIBUTE")]
+    optional: Vec<String>,
+    /// An attribute the site cannot work without: a person who refuses it
+    /// does not sign in. Repeat for several.
+    #[arg(long = "required", value_name = "ATTRIBUTE")]
+    required: Vec<String>,
+}
+
+impl Asks {
+    /// The attributes named, or what is wrong with the options.
+    fn attributes(&self) -> Result<BTreeMap<Attribute, Need>, String> {
+        let mut attributes = BTreeMap::new();
+        let named = self
+            .optional
+            .iter()
+            .map(|name| (name, Need::Optional))
+            .chain(self.required.iter().map(|name| (name, Need::Required)));
+        for (name, need) in named {
+            let attribute = Attribute::parse(name).ok_or_else(|| {
+                let known: Vec<&str> = Attribute::ALL.into_iter().map(Attribute::claim).collect();
+                format!(
+                    "{name} is not an attribute. They are: {}.",
+                    known.join(", ")
+                )
+            })?;
+            if attributes.insert(attribute, need).is_some() {
+                return Err(format!("{name} is named twice."));
+            }
+        }
+        Ok(attributes)
+    }
+}
+
+/// `email=required,given_name=optional`, or `-` for a site that may ask for
+/// nothing.
+fn describe_attributes(attributes: &BTreeMap<Attribute, Need>) -> String {
+    if attributes.is_empty() {
+        return "-".to_owned();
+    }
+    attributes
+        .iter()
+        .map(|(attribute, need)| {
+            let need = match need {
+                Need::Required => "required",
+                Need::Optional => "optional",
+            };
+            format!("{attribute}={need}")
+        })
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 /// Builds the sqlx connection URL for a database path.
@@ -234,6 +311,13 @@ async fn rotate_oidc_key(db: &config::DatabaseConfig) {
     );
 }
 
+/// Says what is wrong on standard error and ends with the status of a
+/// refused command.
+fn fail(message: &str) -> ! {
+    eprintln!("✗ {message}");
+    std::process::exit(2);
+}
+
 /// Handles `seedling client …`. Results go to standard output, one `key=value`
 /// or one site per line, so that a script can read them; everything meant
 /// for a person goes to standard error.
@@ -246,25 +330,51 @@ async fn client_command(db: &config::DatabaseConfig, action: ClientCommand) {
             name,
             redirect_uris,
             public,
-        } => match store.create_client(&name, &redirect_uris, !public).await {
-            Ok((client, secret)) => {
-                println!("client_id={}", client.client_id);
-                eprintln!("✓ Registered \"{}\".", client.name);
-                if let Some(secret) = secret {
-                    println!("client_secret={}", *secret);
-                    eprintln!("  The secret is shown this once and stored hashed: keep it now.");
-                }
+            asks,
+        } => {
+            // Checked before anything is written: a mistake registers nothing.
+            let attributes = asks.attributes().unwrap_or_else(|e| fail(&e));
+            let (client, secret) = store
+                .create_client(&name, &redirect_uris, !public)
+                .await
+                .unwrap_or_else(|e| fail(&e.to_string()));
+            store
+                .set_client_attributes(&client.client_id, &attributes)
+                .await
+                .expect("failed to record what the site may ask for");
+            println!("client_id={}", client.client_id);
+            eprintln!("✓ Registered \"{}\".", client.name);
+            if let Some(secret) = secret {
+                println!("client_secret={}", *secret);
+                eprintln!("  The secret is shown this once and stored hashed: keep it now.");
             }
-            Err(e) => {
-                eprintln!("✗ {e}");
-                std::process::exit(2);
+            if !attributes.is_empty() {
+                eprintln!("  It may ask for: {}.", describe_attributes(&attributes));
             }
-        },
+        }
+        ClientCommand::Attributes { client_id, asks } => {
+            let attributes = asks.attributes().unwrap_or_else(|e| fail(&e));
+            let existed = store
+                .set_client_attributes(&client_id, &attributes)
+                .await
+                .expect("failed to record what the site may ask for");
+            if !existed {
+                fail(&format!("No site is registered as {client_id}."));
+            }
+            if attributes.is_empty() {
+                eprintln!("✓ {client_id} may ask for nothing but an identifier.");
+            } else {
+                eprintln!(
+                    "✓ {client_id} may ask for: {}.",
+                    describe_attributes(&attributes)
+                );
+            }
+        }
         ClientCommand::List => {
             let clients = store.list_clients().await.expect("failed to list clients");
             for client in &clients {
                 println!(
-                    "{}\t{}\t{}\t{}",
+                    "{}\t{}\t{}\t{}\t{}",
                     client.client_id,
                     if client.confidential {
                         "confidential"
@@ -272,7 +382,8 @@ async fn client_command(db: &config::DatabaseConfig, action: ClientCommand) {
                         "public"
                     },
                     client.name,
-                    client.redirect_uris.join(" ")
+                    client.redirect_uris.join(" "),
+                    describe_attributes(&client.attributes)
                 );
             }
             if clients.is_empty() {

@@ -399,7 +399,7 @@ dependencies = [
 [[package]]
 name = "brigid-api"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=d937b344b0776bdb3870de73dfdbe289f5682deb#d937b344b0776bdb3870de73dfdbe289f5682deb"
+source = "git+https://github.com/brig-id/core?rev=4db4678f1c5d83bd11a4fdec9149ca8d29c214c5#4db4678f1c5d83bd11a4fdec9149ca8d29c214c5"
 dependencies = [
  "axum",
  "base64ct",
@@ -445,7 +445,7 @@ dependencies = [
 [[package]]
 name = "brigid-identity"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=d937b344b0776bdb3870de73dfdbe289f5682deb#d937b344b0776bdb3870de73dfdbe289f5682deb"
+source = "git+https://github.com/brig-id/core?rev=4db4678f1c5d83bd11a4fdec9149ca8d29c214c5#4db4678f1c5d83bd11a4fdec9149ca8d29c214c5"
 dependencies = [
  "base64ct",
  "brigid-crypto",
@@ -461,7 +461,7 @@ dependencies = [
 [[package]]
 name = "brigid-oidc"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=d937b344b0776bdb3870de73dfdbe289f5682deb#d937b344b0776bdb3870de73dfdbe289f5682deb"
+source = "git+https://github.com/brig-id/core?rev=4db4678f1c5d83bd11a4fdec9149ca8d29c214c5#4db4678f1c5d83bd11a4fdec9149ca8d29c214c5"
 dependencies = [
  "base64ct",
  "brigid-identity",
@@ -482,12 +482,13 @@ dependencies = [
 [[package]]
 name = "brigid-store"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=d937b344b0776bdb3870de73dfdbe289f5682deb#d937b344b0776bdb3870de73dfdbe289f5682deb"
+source = "git+https://github.com/brig-id/core?rev=4db4678f1c5d83bd11a4fdec9149ca8d29c214c5#4db4678f1c5d83bd11a4fdec9149ca8d29c214c5"
 dependencies = [
  "base64ct",
  "brigid-crypto",
  "brigid-identity",
  "helpers4",
+ "serde",
  "serde_json",
  "sha3 0.11.0",
  "sqlx",
@@ -502,7 +503,7 @@ dependencies = [
 [[package]]
 name = "brigid-webauthn"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=d937b344b0776bdb3870de73dfdbe289f5682deb#d937b344b0776bdb3870de73dfdbe289f5682deb"
+source = "git+https://github.com/brig-id/core?rev=4db4678f1c5d83bd11a4fdec9149ca8d29c214c5#4db4678f1c5d83bd11a4fdec9149ca8d29c214c5"
 dependencies = [
  "brigid-crypto",
  "brigid-identity",

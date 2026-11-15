@@ -691,6 +691,141 @@ async fn a_site_registered_from_the_command_line_signs_a_person_in() {
         .unwrap();
     assert_eq!(resp.status(), 401);
 
+    // -- the operator lets the site ask for attributes; the person decides --
+    let (ok, out) = seedling_client(&server, &["list"]);
+    assert!(
+        ok && out.trim_end().ends_with("\t-"),
+        "nothing so far: {out}"
+    );
+    for wrong in [
+        &["--required", "phone_number"][..],
+        &["--required", "email", "--optional", "email"][..],
+    ] {
+        let (ok, _) = seedling_client(&server, &[&["attributes", &client_id], wrong].concat());
+        assert!(!ok, "{wrong:?}");
+    }
+    let (ok, _) = seedling_client(
+        &server,
+        &["attributes", "no-such-site", "--required", "email"],
+    );
+    assert!(!ok);
+    let (ok, _) = seedling_client(
+        &server,
+        &[
+            "attributes",
+            &client_id,
+            "--required",
+            "email",
+            "--optional",
+            "given_name",
+        ],
+    );
+    assert!(ok);
+    let (_, out) = seedling_client(&server, &["list"]);
+    assert!(out.contains("given_name=optional,email=required"), "{out}");
+
+    let resp = server
+        .client
+        .patch(format!("{base}/account/identities/{identity}"))
+        .header(reqwest::header::COOKIE, &cookie)
+        .json(&json!({ "attributes": { "email": "ada@example.org", "given_name": "Ada" } }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+
+    let resp = browser
+        .get(authorize(&client_id).replace("scope=openid", "scope=openid+profile+email"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 303);
+    let location = resp.headers()["location"].to_str().unwrap().to_owned();
+    let request = location
+        .strip_prefix("/continue/?request=")
+        .unwrap_or_else(|| panic!("unexpected redirect: {location}"));
+    let view = json_body(
+        server
+            .client
+            .get(format!("{base}/auth/authorize/{request}"))
+            .header(reqwest::header::COOKIE, &cookie)
+            .send()
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(
+        view["asked"],
+        json!([
+            { "name": "given_name", "required": false },
+            { "name": "email", "required": true },
+        ])
+    );
+    // The address is required: refusing it does not sign in.
+    let approve = |attributes: Value| {
+        server
+            .client
+            .post(format!("{base}/auth/authorize/{request}/approve"))
+            .header(reqwest::header::COOKIE, &cookie)
+            .json(&json!({ "identity_id": identity, "attributes": attributes }))
+            .send()
+    };
+    assert_eq!(approve(json!([])).await.unwrap().status(), 409);
+    // The first name is optional: refused, the sign-in goes on without it.
+    let resp = approve(json!(["email"])).await.unwrap();
+    assert_eq!(resp.status(), 200);
+    let answer = json_body(resp).await;
+    let back = url::Url::parse(answer["redirect_to"].as_str().unwrap()).unwrap();
+    let query: std::collections::HashMap<_, _> = back.query_pairs().into_owned().collect();
+    let form = url::form_urlencoded::Serializer::new(String::new())
+        .extend_pairs([
+            ("grant_type", "authorization_code"),
+            ("code", query["code"].as_str()),
+            ("redirect_uri", REDIRECT),
+            ("code_verifier", VERIFIER),
+        ])
+        .finish();
+    let resp = browser
+        .post(format!("{base}/token"))
+        .basic_auth(&client_id, Some(&secret))
+        .header(
+            reqwest::header::CONTENT_TYPE,
+            "application/x-www-form-urlencoded",
+        )
+        .body(form)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+    let tokens = json_body(resp).await;
+    let payload = tokens["id_token"]
+        .as_str()
+        .unwrap()
+        .split('.')
+        .nth(1)
+        .unwrap();
+    let claims: Value =
+        serde_json::from_slice(&Base64UrlUnpadded::decode_vec(payload).unwrap()).unwrap();
+    assert_eq!(claims["email"], "ada@example.org");
+    assert_eq!(claims["email_verified"], false);
+    assert!(claims.get("given_name").is_none(), "refused: {claims}");
+
+    // Without any option, the site is back to an identifier only: asking
+    // for more is refused, and the site is told.
+    let (ok, _) = seedling_client(&server, &["attributes", &client_id]);
+    assert!(ok);
+    let resp = browser
+        .get(authorize(&client_id).replace("scope=openid", "scope=openid+email"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 303);
+    let location = resp.headers()["location"].to_str().unwrap();
+    assert!(
+        location.starts_with(REDIRECT) && location.contains("error=invalid_scope"),
+        "{location}"
+    );
+
     // -- the operator removes the site: its requests stay on this server --
     let (ok, _) = seedling_client(&server, &["remove", &client_id]);
     assert!(ok);
