@@ -12,6 +12,13 @@ updates:
       cargo-dependencies:
         patterns:
           - "*"
+    # The tests play the browser's side of a passkey ceremony against the
+    # server side that brig-id/core holds: both sides are the same version of
+    # these crates. They are updated in the core first, then here with its pin.
+    ignore:
+      - dependency-name: "webauthn-rs"
+      - dependency-name: "webauthn-rs-proto"
+      - dependency-name: "webauthn-authenticator-rs"
 
   - package-ecosystem: github-actions
     directory: /
