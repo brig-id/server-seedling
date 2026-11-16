@@ -385,7 +385,9 @@ async fn announce_administration(state: &AppState) {
         .expect("failed to make the setup link")
     {
         Some(link) => {
-            let address = format!("{}/setup/?link={link}", state.issuer());
+            // The secret is in the fragment of the address: a browser never
+            // sends it, so it is in no access log, here or in a proxy.
+            let address = format!("{}/setup/#link={link}", state.issuer());
             // On standard error for whoever started the server by hand, and
             // in the log for whoever reads it from a service manager.
             eprintln!(
@@ -606,7 +608,7 @@ async fn main() {
             .await
             .expect("failed to make the link");
         println!(
-            "{}/admin/claim/?link={link}",
+            "{}/admin/claim/#link={link}",
             public_url(&cfg).as_str().trim_end_matches('/')
         );
         eprintln!(
@@ -671,11 +673,13 @@ async fn main() {
         );
     state.trust_forwarded_for = cfg.security.trust_forwarded_for;
     let state = Arc::new(
-        state.with_admin_log_retention(Duration::from_secs(
-            cfg.security
-                .admin_log_retention_days
-                .saturating_mul(24 * 3600),
-        )),
+        state
+            .with_admin_log_retention(Duration::from_secs(
+                cfg.security
+                    .admin_log_retention_days
+                    .saturating_mul(24 * 3600),
+            ))
+            .with_confirmation_ttl(Duration::from_secs(cfg.security.admin_confirmation_seconds)),
     );
     announce_administration(&state).await;
     let api_router = build_router(state, &cors_origins);
