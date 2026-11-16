@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-16
+
+Administration. A database of 0.5 is upgraded in place (one new schema
+script). **After the upgrade a server is by invitation and has no
+administrator**: `seedling signup open` keeps it open, and `seedling admin
+link` prints the address that makes a signed-in account an administrator.
+
 ### Changed
 
 - **Who may create an account is no longer a setting of the configuration.**
@@ -34,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `security.admin_confirmation_seconds` (default 300): how long a passkey
   ceremony covers administrative changes. Past it, an administrator is asked
   for their passkey again before a change is made.
+- The interface embedded is the one with the administration pages
+  (brig-id/app at `192db62`, what its 0.4.0 is made of).
 
 ## [0.5.0] - 2026-11-15
 
