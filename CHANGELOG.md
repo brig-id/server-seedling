@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-16
+
+### Changed
+
+- The interface embedded is brig-id/app at `db77277`: **adding a second
+  passkey asks where it will be kept** (this device, another phone or
+  tablet, a security key), and a place that already holds one for the
+  account says so instead of "No passkey was added". Nothing changes in the
+  server: it already took several passkeys per account.
+
 ## [0.6.1] - 2026-11-16
 
 ### Added
