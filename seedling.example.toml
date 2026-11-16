@@ -49,3 +49,13 @@ cors_origins = ["https://example.com"]
 # false when clients reach seedling directly: they could forge the header.
 # Override via env: `BRIGID_SECURITY__TRUST_FORWARDED_FOR=true`.
 trust_forwarded_for = false
+# How many days the log of administrative actions is kept (default: 365).
+# It names accounts by an identifier; older entries are deleted.
+# admin_log_retention_days = 365
+# How long a passkey ceremony covers administrative changes, in seconds
+# (default: 300). Past it, an administrator is asked for their passkey again.
+# admin_confirmation_seconds = 300
+
+# Who may create an account is not set here: a new server is by invitation,
+# and an administrator changes it from the interface, or the operator with
+# `seedling signup open|invitation|closed`.
