@@ -125,10 +125,11 @@ pub struct SecurityConfig {
     #[serde(default)]
     pub trust_forwarded_for: bool,
 
-    /// Whether new accounts can be created on this server (default: `true`).
-    /// Closing it leaves sign-in and recovery untouched.
-    #[serde(default = "default_true")]
-    pub signup_open: bool,
+    /// How many days the log of administrative actions is kept (default:
+    /// 365). Older entries are deleted. The log names accounts by an
+    /// identifier: it is kept as long as it serves, not for ever.
+    #[serde(default = "default_admin_log_retention_days")]
+    pub admin_log_retention_days: u64,
 }
 
 impl Default for SecurityConfig {
@@ -138,9 +139,13 @@ impl Default for SecurityConfig {
             session_lifetime_seconds: default_session_lifetime(),
             cors_origins: Vec::new(),
             trust_forwarded_for: false,
-            signup_open: true,
+            admin_log_retention_days: default_admin_log_retention_days(),
         }
     }
+}
+
+fn default_admin_log_retention_days() -> u64 {
+    365
 }
 
 fn default_host() -> String {
@@ -161,10 +166,6 @@ fn default_session_ttl() -> u64 {
 
 fn default_session_lifetime() -> u64 {
     12 * 3600
-}
-
-fn default_true() -> bool {
-    true
 }
 
 /// The configuration sections. An environment variable configures the server
@@ -403,6 +404,8 @@ mod tests {
             jail.set_env("BRIGID_MASTER_KEY_FILE", "/run/secrets/key");
             jail.set_env("BRIGID_SERVER__DOMAIN", "id.example.com");
             jail.set_env("BRIGID_SERVER__PORT", "9001");
+            jail.set_env("BRIGID_SECURITY__ADMIN_LOG_RETENTION_DAYS", "180");
+            // A setting of an earlier version, left in a deployment: ignored.
             jail.set_env("BRIGID_SECURITY__SIGNUP_OPEN", "false");
 
             let figment = figment(None);
@@ -412,16 +415,16 @@ mod tests {
             let cfg: Config = figment.extract()?;
             assert_eq!(cfg.server.domain, "id.example.com");
             assert_eq!(cfg.server.port, 9001);
-            assert!(!cfg.security.signup_open);
+            assert_eq!(cfg.security.admin_log_retention_days, 180);
             Ok(())
         });
     }
 
     #[test]
-    fn sign_up_is_open_by_default() {
+    fn the_administration_log_is_kept_a_year_by_default() {
         let cfg: Config = Figment::from(Serialized::defaults(minimal()))
             .extract()
             .unwrap();
-        assert!(cfg.security.signup_open);
+        assert_eq!(cfg.security.admin_log_retention_days, 365);
     }
 }

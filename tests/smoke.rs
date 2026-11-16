@@ -15,7 +15,9 @@ use std::{
     time::Duration,
 };
 
-use common::{TEST_MASTER_KEY, free_port, seedling_bin, wait_until_listening};
+use common::{
+    TEST_MASTER_KEY, free_port, open_sign_up, seedling, seedling_bin, wait_until_listening,
+};
 use serde_json::{Value, json};
 use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
 use webauthn_rs::prelude::{CreationChallengeResponse, RequestChallengeResponse};
@@ -46,11 +48,24 @@ fn start_seedling() -> TestServer {
     start_seedling_with(&[])
 }
 
-/// [`start_seedling`] with extra environment variables for the `seedling` process.
+/// [`start_seedling`] with extra environment variables for the `seedling`
+/// process. Anyone can create an account on it.
 fn start_seedling_with(extra_env: &[(&str, &str)]) -> TestServer {
+    start(extra_env, true).0
+}
+
+/// Starts `seedling`. `open`: sign-up is opened first; else the server is as
+/// an operator finds it, and what it says on standard error is returned.
+fn start(
+    extra_env: &[(&str, &str)],
+    open: bool,
+) -> (TestServer, Option<std::process::ChildStderr>) {
     let port = free_port();
     let db_dir = tempfile::TempDir::new().expect("tempdir for db");
     let db_path = db_dir.path().join("smoke.db");
+    if open {
+        open_sign_up(&db_path);
+    }
 
     let ui_dir = tempfile::TempDir::new().expect("tempdir for ui dist");
     fs::write(
@@ -77,9 +92,10 @@ fn start_seedling_with(extra_env: &[(&str, &str)]) -> TestServer {
         )
         .envs(extra_env.iter().copied())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(if open { Stdio::null() } else { Stdio::piped() })
         .spawn()
         .expect("spawn seedling");
+    let said = child.stderr.take();
 
     let addr: SocketAddr = format!("127.0.0.1:{port}").parse().unwrap();
     if !wait_until_listening(addr, Duration::from_secs(5)) {
@@ -91,7 +107,7 @@ fn start_seedling_with(extra_env: &[(&str, &str)]) -> TestServer {
         panic!("seedling did not start listening");
     }
 
-    TestServer {
+    let server = TestServer {
         child,
         // WebAuthn strictly checks the ceremony's origin against the RP's
         // configured domain (`BRIGID_SERVER__DOMAIN=localhost` above) — using
@@ -115,7 +131,8 @@ fn start_seedling_with(extra_env: &[(&str, &str)]) -> TestServer {
         db_path,
         _db_dir: db_dir,
         _ui_dir: ui_dir,
-    }
+    };
+    (server, said)
 }
 
 /// The session cookie (`name=value`) a response sets; checks its attributes.
@@ -925,36 +942,227 @@ async fn a_site_registered_from_the_command_line_signs_a_person_in() {
     assert!(!ok, "removing it twice fails");
 }
 
+/// The first line of `text` that holds `needle`, from `needle` to its end.
+fn address_in(text: &str, needle: &str) -> Option<String> {
+    text.split_whitespace()
+        .find(|word| word.contains(needle))
+        .map(str::to_owned)
+}
+
 #[tokio::test]
-async fn sign_up_can_be_closed_by_a_setting() {
-    let server = start_seedling_with(&[("BRIGID_SECURITY__SIGNUP_OPEN", "false")]);
+async fn a_new_server_takes_its_first_administrator_from_the_link_it_prints() {
+    use std::io::{BufRead, BufReader};
+
+    let (server, said) = start(&[], false);
+    let base = &server.base_url;
+
+    // Nobody opened it: no account without a link.
     let info = json_body(
         server
             .client
-            .get(format!("{}/auth/server", server.base_url))
+            .get(format!("{base}/auth/server"))
             .send()
             .await
             .unwrap(),
     )
     .await;
+    assert_eq!(info["policy"], "invitation");
     assert_eq!(info["sign_up"], false);
-
     let resp = server
         .client
-        .post(format!("{}/auth/register/begin", server.base_url))
+        .post(format!("{base}/auth/register/begin"))
         .json(&json!({}))
         .send()
         .await
         .unwrap();
     assert_eq!(resp.status(), 403);
+    assert_eq!(json_body(resp).await["code"], "invitation_required");
 
-    // Signing in is still offered.
+    // What the operator reads where the server was started.
+    let mut lines = BufReader::new(said.expect("standard error")).lines();
+    let address = loop {
+        let line = lines
+            .next()
+            .expect("the server prints its setup link")
+            .unwrap();
+        if let Some(address) = address_in(&line, "/setup/?link=") {
+            break address;
+        }
+    };
+    assert!(
+        address.starts_with(&format!("{base}/setup/?link=")),
+        "{address}"
+    );
+    let link = address.split("link=").nth(1).unwrap().to_owned();
+
+    // Used, it makes the first account, an administrator; once.
+    let origin = url::Url::parse(base).unwrap();
+    let mut passkey = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let sign_up = async |passkey: &mut WebauthnAuthenticator<SoftPasskey>, link: &str| {
+        let resp = server
+            .client
+            .post(format!("{base}/auth/register/begin"))
+            .json(&json!({ "link": link }))
+            .send()
+            .await
+            .unwrap();
+        if resp.status() != 200 {
+            return Err(json_body(resp).await);
+        }
+        let begin = json_body(resp).await;
+        let ccr: CreationChallengeResponse =
+            serde_json::from_value(begin["challenge"].clone()).unwrap();
+        let credential = passkey
+            .do_registration(origin.clone(), for_soft_passkey(ccr))
+            .expect("registration ceremony");
+        let resp = server
+            .client
+            .post(format!("{base}/auth/register/finish"))
+            .json(&json!({ "session_id": begin["session_id"], "credential": credential }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 204);
+        Ok(session_cookie(&resp))
+    };
+    let cookie = sign_up(&mut passkey, &link)
+        .await
+        .expect("the first account");
+    let session = json_body(
+        server
+            .client
+            .get(format!("{base}/auth/session"))
+            .header(reqwest::header::COOKIE, &cookie)
+            .send()
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(session["admin"], true);
+    let refused = sign_up(
+        &mut WebauthnAuthenticator::new(SoftPasskey::new(true)),
+        &link,
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(refused["code"], "link_invalid");
+
+    // The administrator reads the accounts, and nothing of anyone's
+    // identities is there to read.
+    let accounts = json_body(
+        server
+            .client
+            .get(format!("{base}/admin/accounts"))
+            .header(reqwest::header::COOKIE, &cookie)
+            .send()
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(accounts.as_array().unwrap().len(), 1);
+    assert_eq!(accounts[0]["admin"], true);
+    assert!(accounts[0].get("identities").is_none());
+
+    // From the machine: who may sign up, read and set.
+    let (ok, out, _) = seedling(&server.db_path, &["signup"]);
+    assert!(ok && out.trim() == "invitation", "{out}");
+    let (ok, out, _) = seedling(&server.db_path, &["signup", "closed"]);
+    assert!(ok && out.trim() == "closed", "{out}");
+    let (ok, _, err) = seedling(&server.db_path, &["signup", "whenever"]);
+    assert!(!ok && err.contains("open, invitation or closed"), "{err}");
+    let info = json_body(
+        server
+            .client
+            .get(format!("{base}/auth/server"))
+            .send()
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(info["policy"], "closed");
+    // It is in the log, as done on the machine.
+    let log = json_body(
+        server
+            .client
+            .get(format!("{base}/admin/log"))
+            .header(reqwest::header::COOKIE, &cookie)
+            .send()
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(log[0]["action"], "signup.policy");
+    assert_eq!(log[0]["by"], "machine");
+    assert_eq!(log[0]["detail"], "closed");
+}
+
+#[tokio::test]
+async fn a_server_with_accounts_and_no_administrator_gets_one_from_the_machine() {
+    // As a server upgraded from a version without administration.
+    let server = start_seedling();
+    let base = &server.base_url;
+    let origin = url::Url::parse(base).unwrap();
+    let mut passkey = WebauthnAuthenticator::new(SoftPasskey::new(true));
     let resp = server
         .client
-        .post(format!("{}/auth/login/begin", server.base_url))
+        .post(format!("{base}/auth/register/begin"))
         .json(&json!({}))
         .send()
         .await
         .unwrap();
     assert_eq!(resp.status(), 200);
+    let begin = json_body(resp).await;
+    let ccr: CreationChallengeResponse =
+        serde_json::from_value(begin["challenge"].clone()).unwrap();
+    let credential = passkey
+        .do_registration(origin, for_soft_passkey(ccr))
+        .expect("registration ceremony");
+    let resp = server
+        .client
+        .post(format!("{base}/auth/register/finish"))
+        .json(&json!({ "session_id": begin["session_id"], "credential": credential }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 204);
+    let cookie = session_cookie(&resp);
+    let resp = server
+        .client
+        .post(format!("{base}/account/recovery-code"))
+        .header(reqwest::header::COOKIE, &cookie)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+
+    // The operator makes a link; the signed-in account opens it.
+    let (ok, out, err) = seedling(&server.db_path, &["admin", "link"]);
+    assert!(ok, "{out}{err}");
+    let address = address_in(&out, "/admin/claim/?link=").expect("an address is printed");
+    assert!(address.starts_with("http://localhost:"), "{address}");
+    let link = address.split("link=").nth(1).unwrap().to_owned();
+    let claim = async || {
+        server
+            .client
+            .post(format!("{base}/admin/claim"))
+            .header(reqwest::header::COOKIE, &cookie)
+            .json(&json!({ "link": link }))
+            .send()
+            .await
+            .unwrap()
+            .status()
+    };
+    assert_eq!(claim().await, 204);
+    assert_eq!(claim().await, 403, "once");
+    let session = json_body(
+        server
+            .client
+            .get(format!("{base}/auth/session"))
+            .header(reqwest::header::COOKIE, &cookie)
+            .send()
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(session["admin"], true);
 }
