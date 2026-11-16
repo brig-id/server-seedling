@@ -66,9 +66,12 @@ tower = { version = "0.5", features = ["util"] }
 # E2E smoke tests (tests/smoke.rs) — real HTTP against a spawned `seedling`
 # subprocess, exercising a full WebAuthn ceremony via a software passkey.
 reqwest = { version = "0.13", features = ["json"] }
-webauthn-authenticator-rs = { version = "0.6", features = ["softpasskey"] }
-webauthn-rs = { version = "0.6", features = ["danger-allow-state-serialisation"] }
-webauthn-rs-proto = "0.6"
+# The same version as brig-id/core, which holds the server side of the
+# ceremony: these move when the core moves, not by themselves
+# (.github/dependabot.yml).
+webauthn-authenticator-rs = { version = "0.5", features = ["softpasskey"] }
+webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation"] }
+webauthn-rs-proto = "0.5"
 
 [profile.release]
 panic = "abort"
