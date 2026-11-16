@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-16
+
+### Added
+
+- **The version is visible.** `seedling --version` says it on the machine,
+  and the server declares its edition and version to the core, which tells
+  them to administrators only: the administration shows "This server runs
+  seedling 0.6.1, with the interface 0.4.0" at the foot of its pages. No
+  public answer names a version.
+
+### Changed
+
+- The interface embedded is brig-id/app at `119b6bc` (0.4.0 and the version
+  line).
+- `axum-server` 0.9.
+
 ## [0.6.0] - 2026-11-16
 
 Administration. A database of 0.5 is upgraded in place (one new schema
