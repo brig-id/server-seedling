@@ -37,7 +37,7 @@ tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 
 # HTTP / TLS
 axum = "0.8"
-axum-server = { version = "0.8", features = ["tls-rustls"] }
+axum-server = { version = "0.9", features = ["tls-rustls"] }
 tower-http = { version = "0.7", features = ["set-header"] }
 # The embedded interface is compressed at build time (`build.rs`); a client
 # that takes no compression gets it unpacked.
@@ -66,9 +66,9 @@ tower = { version = "0.5", features = ["util"] }
 # E2E smoke tests (tests/smoke.rs) — real HTTP against a spawned `seedling`
 # subprocess, exercising a full WebAuthn ceremony via a software passkey.
 reqwest = { version = "0.13", features = ["json"] }
-webauthn-authenticator-rs = { version = "0.5", features = ["softpasskey"] }
-webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation"] }
-webauthn-rs-proto = "0.5"
+webauthn-authenticator-rs = { version = "0.6", features = ["softpasskey"] }
+webauthn-rs = { version = "0.6", features = ["danger-allow-state-serialisation"] }
+webauthn-rs-proto = "0.6"
 
 [profile.release]
 panic = "abort"
