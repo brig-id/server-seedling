@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Who may create an account is no longer a setting of the configuration.**
+  `security.signup_open` is gone (still accepted and ignored, so a deployment
+  that sets it starts). The policy is in the database: `open`, `invitation`
+  (the default) or `closed`, set by an administrator from the interface or by
+  `seedling signup <policy>` on the machine. **A server upgraded from 0.5 is
+  by invitation until someone opens it.**
+
+### Added
+
+- **Administration** (brig-id/core#88). A server without account prints, at
+  each start, a one-time setup link that creates the first account as
+  administrator. A server that has accounts and no administrator gets one
+  with `seedling admin link`: the signed-in account that opens the address it
+  prints becomes administrator. Administrators see the accounts (never their
+  identities), suspend or delete them, grant the role, register applications,
+  set who may sign up and make invitations.
+- `security.admin_log_retention_days` (default 365): the log of
+  administrative actions names accounts by an identifier only, and entries
+  older than this are deleted.
+
 ## [0.5.0] - 2026-11-15
 
 The first release of step 2. A database of 0.4 is upgraded in place (one new

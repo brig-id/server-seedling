@@ -20,7 +20,9 @@ use std::{
     time::Duration,
 };
 
-use common::{TEST_MASTER_KEY as OLD_KEY, free_port, seedling_bin, wait_until_listening};
+use common::{
+    TEST_MASTER_KEY as OLD_KEY, free_port, open_sign_up, seedling_bin, wait_until_listening,
+};
 use serde_json::json;
 use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
 use webauthn_rs::prelude::{CreationChallengeResponse, RequestChallengeResponse};
@@ -71,6 +73,10 @@ async fn rotate_key_cli_round_trip_login_works_with_new_key() {
     let username = "rotate-test-user@localhost";
 
     // -- Register a real user against a `seedling` running with the old key --
+    // Anyone can create an account on it: who may sign up is not this
+    // test's subject. The setting is in the database, and survives the
+    // rotation like the rest.
+    open_sign_up(&db_path);
     let child = start_seedling(OLD_KEY, port, &db_path).await;
 
     let origin = url::Url::parse(&base_url).unwrap();

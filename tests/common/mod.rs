@@ -24,6 +24,39 @@ pub fn free_port() -> u16 {
     listener.local_addr().expect("local_addr").port()
 }
 
+/// Runs `seedling <args…>` on the database at `db_path` and returns whether
+/// it succeeded, with what it printed on standard output and on standard
+/// error.
+// Each test crate includes this module and uses part of it.
+#[allow(dead_code)]
+pub fn seedling(db_path: &std::path::Path, args: &[&str]) -> (bool, String, String) {
+    let out = std::process::Command::new(seedling_bin())
+        .args(args)
+        .env("BRIGID_MASTER_KEY", TEST_MASTER_KEY)
+        .env("BRIGID_SERVER__DOMAIN", "localhost")
+        .env("BRIGID_DATABASE__PATH", db_path.display().to_string())
+        .output()
+        .expect("run seedling");
+    (
+        out.status.success(),
+        String::from_utf8(out.stdout).expect("UTF-8 output"),
+        String::from_utf8(out.stderr).expect("UTF-8 output"),
+    )
+}
+
+/// Opens sign-up on the database at `db_path`, creating it if needed: what
+/// the tests that create accounts start from. A server that nobody opened
+/// takes accounts by link only, which has tests of its own.
+// Each test crate includes this module and uses part of it.
+#[allow(dead_code)]
+pub fn open_sign_up(db_path: &std::path::Path) {
+    let (ok, out, err) = seedling(db_path, &["signup", "open"]);
+    assert!(
+        ok && out.trim() == "open",
+        "seedling signup open: {out}{err}"
+    );
+}
+
 pub fn wait_until_listening(addr: SocketAddr, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {

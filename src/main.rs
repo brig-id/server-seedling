@@ -85,6 +85,22 @@ enum Command {
         action: ClientCommand,
     },
 
+    /// Administration from the machine. Reaching it is the proof of being
+    /// the operator.
+    Admin {
+        #[command(subcommand)]
+        action: AdminCommand,
+    },
+
+    /// Say who may create an account: `open` (anyone), `invitation` (whoever
+    /// an administrator invited; the default) or `closed` (nobody). Without
+    /// a value, prints the current one. An administrator sets the same from
+    /// the interface.
+    Signup {
+        /// `open`, `invitation` or `closed`.
+        policy: Option<String>,
+    },
+
     /// Liveness probe for Docker's HEALTHCHECK: GET the local `/health`,
     /// exit 0 on 200, 1 otherwise. Reads only `BRIGID_SERVER__PORT` (default
     /// 8080), so it needs neither the config file nor the master key.
@@ -93,6 +109,14 @@ enum Command {
         #[arg(long, env = "BRIGID_SERVER__PORT", default_value_t = 8080)]
         port: u16,
     },
+}
+
+#[derive(Subcommand)]
+enum AdminCommand {
+    /// Print a link that makes an administrator of the signed-in account
+    /// that opens it. For a server that has accounts and no administrator,
+    /// or whose administrators all lost their passkeys. One use, one hour.
+    Link,
 }
 
 #[derive(Subcommand)]
@@ -311,6 +335,105 @@ async fn rotate_oidc_key(db: &config::DatabaseConfig) {
     );
 }
 
+/// The address people reach this server at, with its final slash:
+/// `server.public_url` when set, else what `domain` and `port` say.
+fn public_url(cfg: &config::Config) -> Url {
+    match cfg.server.public_url {
+        Some(ref u) => u
+            .parse()
+            .expect("invalid `server.public_url` in configuration"),
+        None => {
+            let scheme = if cfg.server.tls_cert.is_some() && cfg.server.tls_key.is_some() {
+                "https"
+            } else {
+                "http"
+            };
+            format!("{}://{}:{}", scheme, cfg.server.domain, cfg.server.port)
+                .parse()
+                .expect("invalid domain/port in configuration")
+        }
+    }
+}
+
+/// At start: says how the server gets its first administrator while it has
+/// none, and deletes what the log of administrative actions kept too long.
+///
+/// - No account at all: a setup link, printed here and nowhere else. It
+///   creates the first account, as administrator; it works once, for an
+///   hour, and each start replaces it.
+/// - Accounts and no administrator (a server upgraded from a version without
+///   administration, or whose administrators left): `seedling admin link`.
+async fn announce_administration(state: &AppState) {
+    let store = &state.store;
+    let now = time::OffsetDateTime::now_utc().unix_timestamp();
+    let keep = i64::try_from(state.admin_log_retention.as_secs()).unwrap_or(i64::MAX);
+    match store.purge_admin_log(now.saturating_sub(keep)).await {
+        Ok(0) => {}
+        Ok(deleted) => tracing::info!(deleted, "old entries of the administration log deleted"),
+        Err(e) => tracing::error!(error = %e, "the administration log could not be purged"),
+    }
+
+    let administrators = store
+        .count_administrators()
+        .await
+        .expect("failed to read the accounts");
+    if administrators > 0 {
+        return;
+    }
+    match brigid_api::setup_link(store)
+        .await
+        .expect("failed to make the setup link")
+    {
+        Some(link) => {
+            let address = format!("{}/setup/?link={link}", state.issuer());
+            // On standard error for whoever started the server by hand, and
+            // in the log for whoever reads it from a service manager.
+            eprintln!(
+                "\nThis server has no administrator yet. To become it, open:\n\n  {address}\n\n\
+                 The link works once, for an hour; restarting the server makes a new one.\n"
+            );
+            tracing::warn!(setup_link = %address, "no administrator yet: open the setup link");
+        }
+        None => {
+            eprintln!(
+                "\nThis server has accounts and no administrator. Run `seedling admin link`,\n\
+                 then open the address it prints, signed in as the account that will administer.\n"
+            );
+            tracing::warn!("accounts and no administrator: run `seedling admin link`");
+        }
+    }
+}
+
+/// Handles `seedling signup [policy]`.
+async fn signup_command(db: &config::DatabaseConfig, policy: Option<&str>) {
+    use brigid_store::SignupPolicy;
+    let store = EncryptedStore::new(&db_url(&db.path), load_master_key())
+        .await
+        .expect("failed to open or migrate database");
+    if let Some(value) = policy {
+        let policy = SignupPolicy::parse(value)
+            .unwrap_or_else(|| fail(&format!("{value} is not open, invitation or closed.")));
+        store
+            .set_signup_policy(policy)
+            .await
+            .expect("failed to set who may sign up");
+        store
+            .log_admin_action(&brigid_store::AdminAction {
+                action: "signup.policy".into(),
+                actor: None,
+                account: None,
+                detail: Some(policy.as_str().to_owned()),
+            })
+            .await
+            .expect("failed to log the change");
+    }
+    let current = store
+        .signup_policy()
+        .await
+        .expect("failed to read who may sign up");
+    println!("{}", current.as_str());
+}
+
 /// Says what is wrong on standard error and ends with the status of a
 /// refused command.
 fn fail(message: &str) -> ! {
@@ -466,6 +589,31 @@ async fn main() {
         rotate_oidc_key(&db).await;
         return;
     }
+    if let Some(Command::Signup { policy }) = &cli.command {
+        let db = config::load_database(cli.config.as_deref()).expect("configuration error");
+        signup_command(&db, policy.as_deref()).await;
+        return;
+    }
+    if let Some(Command::Admin {
+        action: AdminCommand::Link,
+    }) = cli.command
+    {
+        let cfg = config::load(cli.config.as_deref()).expect("configuration error");
+        let store = EncryptedStore::new(&db_url(&cfg.database.path), load_master_key())
+            .await
+            .expect("failed to open or migrate database");
+        let link = brigid_api::administrator_link(&store)
+            .await
+            .expect("failed to make the link");
+        println!(
+            "{}/admin/claim/?link={link}",
+            public_url(&cfg).as_str().trim_end_matches('/')
+        );
+        eprintln!(
+            "✓ Open this address signed in as the account that will administer the server.\n  It works once, for an hour."
+        );
+        return;
+    }
     if let Some(Command::Client { action }) = cli.command {
         let db = config::load_database(cli.config.as_deref()).expect("configuration error");
         client_command(&db, action).await;
@@ -500,21 +648,7 @@ async fn main() {
     );
 
     // -- Application state --------------------------------------------------
-    let base_url: Url = match cfg.server.public_url {
-        Some(ref u) => u
-            .parse()
-            .expect("invalid `server.public_url` in configuration"),
-        None => {
-            let scheme = if cfg.server.tls_cert.is_some() && cfg.server.tls_key.is_some() {
-                "https"
-            } else {
-                "http"
-            };
-            format!("{}://{}:{}", scheme, cfg.server.domain, cfg.server.port)
-                .parse()
-                .expect("invalid domain/port in configuration")
-        }
-    };
+    let base_url = public_url(&cfg);
 
     let webauthn = WebauthnService::new(cfg.server.domain.as_str(), &base_url)
         .expect("failed to build WebAuthn service (check `domain` in config)");
@@ -536,11 +670,14 @@ async fn main() {
             Duration::from_secs(cfg.security.session_lifetime_seconds),
         );
     state.trust_forwarded_for = cfg.security.trust_forwarded_for;
-    state.signup_open = cfg.security.signup_open;
-    if !state.signup_open {
-        tracing::info!("sign-up is closed: no account can be created on this server");
-    }
-    let state = Arc::new(state);
+    let state = Arc::new(
+        state.with_admin_log_retention(Duration::from_secs(
+            cfg.security
+                .admin_log_retention_days
+                .saturating_mul(24 * 3600),
+        )),
+    );
+    announce_administration(&state).await;
     let api_router = build_router(state, &cors_origins);
 
     // The interface. A released build carries it; `server.ui_dist_dir`, the
