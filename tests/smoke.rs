@@ -949,6 +949,21 @@ fn address_in(text: &str, needle: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
+/// On the machine, the executable says which version it is. In the
+/// interface the same is told to administrators (brig-id/core).
+#[test]
+fn the_executable_says_its_version() {
+    let said = std::process::Command::new(env!("CARGO_BIN_EXE_seedling"))
+        .arg("--version")
+        .output()
+        .expect("seedling runs");
+    assert!(said.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&said.stdout).trim(),
+        concat!("seedling ", env!("CARGO_PKG_VERSION"))
+    );
+}
+
 #[tokio::test]
 async fn a_new_server_takes_its_first_administrator_from_the_link_it_prints() {
     use std::io::{BufRead, BufReader};
