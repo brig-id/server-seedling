@@ -406,7 +406,7 @@ dependencies = [
 [[package]]
 name = "brigid-api"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=2db73ef61eade15ea3898d56faf5c545d10a7359#2db73ef61eade15ea3898d56faf5c545d10a7359"
+source = "git+https://github.com/brig-id/core?rev=be3b57f161587e113ce25da3a9e56b85f21ff80e#be3b57f161587e113ce25da3a9e56b85f21ff80e"
 dependencies = [
  "axum",
  "base64ct",
@@ -452,7 +452,7 @@ dependencies = [
 [[package]]
 name = "brigid-identity"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=2db73ef61eade15ea3898d56faf5c545d10a7359#2db73ef61eade15ea3898d56faf5c545d10a7359"
+source = "git+https://github.com/brig-id/core?rev=be3b57f161587e113ce25da3a9e56b85f21ff80e#be3b57f161587e113ce25da3a9e56b85f21ff80e"
 dependencies = [
  "base64ct",
  "brigid-crypto",
@@ -468,7 +468,7 @@ dependencies = [
 [[package]]
 name = "brigid-oidc"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=2db73ef61eade15ea3898d56faf5c545d10a7359#2db73ef61eade15ea3898d56faf5c545d10a7359"
+source = "git+https://github.com/brig-id/core?rev=be3b57f161587e113ce25da3a9e56b85f21ff80e#be3b57f161587e113ce25da3a9e56b85f21ff80e"
 dependencies = [
  "base64ct",
  "brigid-identity",
@@ -489,7 +489,7 @@ dependencies = [
 [[package]]
 name = "brigid-store"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=2db73ef61eade15ea3898d56faf5c545d10a7359#2db73ef61eade15ea3898d56faf5c545d10a7359"
+source = "git+https://github.com/brig-id/core?rev=be3b57f161587e113ce25da3a9e56b85f21ff80e#be3b57f161587e113ce25da3a9e56b85f21ff80e"
 dependencies = [
  "base64ct",
  "brigid-crypto",
@@ -510,7 +510,7 @@ dependencies = [
 [[package]]
 name = "brigid-webauthn"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=2db73ef61eade15ea3898d56faf5c545d10a7359#2db73ef61eade15ea3898d56faf5c545d10a7359"
+source = "git+https://github.com/brig-id/core?rev=be3b57f161587e113ce25da3a9e56b85f21ff80e#be3b57f161587e113ce25da3a9e56b85f21ff80e"
 dependencies = [
  "brigid-crypto",
  "brigid-identity",

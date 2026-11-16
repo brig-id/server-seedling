@@ -39,7 +39,7 @@ use brigid_webauthn::WebauthnService;
 // ---------------------------------------------------------------------------
 
 #[derive(Parser)]
-#[command(name = "seedling", about = "brig·id single-server deployment")]
+#[command(name = "seedling", version, about = "brig·id single-server deployment")]
 struct Cli {
     /// Path to the TOML configuration file.
     ///
@@ -667,6 +667,9 @@ async fn main() {
 
     let mut state = AppState::new(store, webauthn, oidc_key, base_url, vsid_salt)
         .with_retired_oidc_keys(retired_oidc_keys)
+        // What its administrators read in the interface; `seedling --version`
+        // says the same on the machine. Nobody else is told.
+        .with_edition("seedling", env!("CARGO_PKG_VERSION"))
         .with_session_timeouts(
             Duration::from_secs(cfg.security.session_ttl_seconds),
             Duration::from_secs(cfg.security.session_lifetime_seconds),
