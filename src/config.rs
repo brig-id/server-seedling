@@ -130,6 +130,13 @@ pub struct SecurityConfig {
     /// identifier: it is kept as long as it serves, not for ever.
     #[serde(default = "default_admin_log_retention_days")]
     pub admin_log_retention_days: u64,
+
+    /// How long a passkey ceremony covers administrative changes, in
+    /// seconds (default: 300). An administrator who signed in or confirmed
+    /// longer ago than this is asked for their passkey again before a
+    /// change is made.
+    #[serde(default = "default_admin_confirmation_seconds")]
+    pub admin_confirmation_seconds: u64,
 }
 
 impl Default for SecurityConfig {
@@ -140,8 +147,13 @@ impl Default for SecurityConfig {
             cors_origins: Vec::new(),
             trust_forwarded_for: false,
             admin_log_retention_days: default_admin_log_retention_days(),
+            admin_confirmation_seconds: default_admin_confirmation_seconds(),
         }
     }
+}
+
+fn default_admin_confirmation_seconds() -> u64 {
+    300
 }
 
 fn default_admin_log_retention_days() -> u64 {
@@ -426,5 +438,13 @@ mod tests {
             .extract()
             .unwrap();
         assert_eq!(cfg.security.admin_log_retention_days, 365);
+    }
+
+    #[test]
+    fn a_passkey_ceremony_covers_administrative_changes_for_five_minutes_by_default() {
+        let cfg: Config = Figment::from(Serialized::defaults(minimal()))
+            .extract()
+            .unwrap();
+        assert_eq!(cfg.security.admin_confirmation_seconds, 300);
     }
 }

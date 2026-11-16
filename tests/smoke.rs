@@ -985,12 +985,12 @@ async fn a_new_server_takes_its_first_administrator_from_the_link_it_prints() {
             .next()
             .expect("the server prints its setup link")
             .unwrap();
-        if let Some(address) = address_in(&line, "/setup/?link=") {
+        if let Some(address) = address_in(&line, "/setup/#link=") {
             break address;
         }
     };
     assert!(
-        address.starts_with(&format!("{base}/setup/?link=")),
+        address.starts_with(&format!("{base}/setup/#link=")),
         "{address}"
     );
     let link = address.split("link=").nth(1).unwrap().to_owned();
@@ -1138,7 +1138,7 @@ async fn a_server_with_accounts_and_no_administrator_gets_one_from_the_machine()
     // The operator makes a link; the signed-in account opens it.
     let (ok, out, err) = seedling(&server.db_path, &["admin", "link"]);
     assert!(ok, "{out}{err}");
-    let address = address_in(&out, "/admin/claim/?link=").expect("an address is printed");
+    let address = address_in(&out, "/admin/claim/#link=").expect("an address is printed");
     assert!(address.starts_with("http://localhost:"), "{address}");
     let link = address.split("link=").nth(1).unwrap().to_owned();
     let claim = async || {

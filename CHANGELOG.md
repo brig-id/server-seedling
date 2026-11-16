@@ -25,10 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   with `seedling admin link`: the signed-in account that opens the address it
   prints becomes administrator. Administrators see the accounts (never their
   identities), suspend or delete them, grant the role, register applications,
-  set who may sign up and make invitations.
+  set who may sign up and make invitations. The secret of a link is in the
+  fragment of its address (`/setup/#link=…`): a browser never sends it, so
+  it is in no access log, of this server or of a proxy in front of it.
 - `security.admin_log_retention_days` (default 365): the log of
   administrative actions names accounts by an identifier only, and entries
   older than this are deleted.
+- `security.admin_confirmation_seconds` (default 300): how long a passkey
+  ceremony covers administrative changes. Past it, an administrator is asked
+  for their passkey again before a change is made.
 
 ## [0.5.0] - 2026-11-15
 
