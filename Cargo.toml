@@ -1,6 +1,6 @@
 [package]
 name = "seedling"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 publish = false
@@ -15,11 +15,11 @@ path = "src/lib.rs"
 
 [dependencies]
 # brig·id core crates (git dep pointing to the core repository)
-brigid-api = { git = "https://github.com/brig-id/core", rev = "be3b57f161587e113ce25da3a9e56b85f21ff80e", package = "brigid-api" }
-brigid-store = { git = "https://github.com/brig-id/core", rev = "be3b57f161587e113ce25da3a9e56b85f21ff80e", package = "brigid-store" }
-brigid-identity = { git = "https://github.com/brig-id/core", rev = "be3b57f161587e113ce25da3a9e56b85f21ff80e", package = "brigid-identity" }
-brigid-webauthn = { git = "https://github.com/brig-id/core", rev = "be3b57f161587e113ce25da3a9e56b85f21ff80e", package = "brigid-webauthn" }
-brigid-oidc = { git = "https://github.com/brig-id/core", rev = "be3b57f161587e113ce25da3a9e56b85f21ff80e", package = "brigid-oidc" }
+brigid-api = { git = "https://github.com/brig-id/core", rev = "27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb", package = "brigid-api" }
+brigid-store = { git = "https://github.com/brig-id/core", rev = "27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb", package = "brigid-store" }
+brigid-identity = { git = "https://github.com/brig-id/core", rev = "27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb", package = "brigid-identity" }
+brigid-webauthn = { git = "https://github.com/brig-id/core", rev = "27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb", package = "brigid-webauthn" }
+brigid-oidc = { git = "https://github.com/brig-id/core", rev = "27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb", package = "brigid-oidc" }
 
 # Cryptographic primitives
 brigid-crypto = { git = "https://github.com/brig-id/crypto", tag = "v0.1.0" }
