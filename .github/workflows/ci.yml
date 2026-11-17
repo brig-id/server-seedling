@@ -270,7 +270,10 @@ jobs:
         run: |
           mkdir -p release
           for pair in amd64:x86_64 arm64:aarch64; do
-            cp "artifacts/seedling-${pair%%:*}/seedling" "release/seedling-${GITHUB_REF_NAME}-linux-${pair##*:}"
+            # No version in the name: releases/latest/download/<name> is then
+            # always the newest, which is how docs/install.md installs and
+            # updates.
+            cp "artifacts/seedling-${pair%%:*}/seedling" "release/seedling-linux-${pair##*:}"
           done
           chmod 755 release/*
           (cd release && sha256sum seedling-* > SHA256SUMS)
@@ -281,14 +284,14 @@ jobs:
         with:
           path: .
           format: spdx-json
-          output-file: release/seedling-${{ github.ref_name }}.spdx.json
+          output-file: release/seedling.spdx.json
           upload-artifact: false
           upload-release-assets: false
 
       - name: Provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: release/seedling-*-linux-*
+          subject-path: release/seedling-linux-*
 
       - name: Publish
         env:

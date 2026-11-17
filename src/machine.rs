@@ -30,6 +30,22 @@ pub const DATA_DIR: &str = "/var/lib/brigid";
 pub const UNIT_PATH: &str = "/etc/systemd/system/seedling.service";
 pub const SYSUSERS_PATH: &str = "/etc/sysusers.d/brigid.conf";
 
+/// What to type after `seedling init --systemd`: printed by it, and shown by
+/// step 3 of docs/install.md, which a test keeps identical.
+pub const START_COMMANDS: &str = "\
+sudo systemd-sysusers
+sudo systemctl daemon-reload
+sudo systemctl enable --now seedling
+sudo journalctl -u seedling -n 20 --no-pager
+";
+
+/// Whether something on this machine already listens on `port`, where the
+/// server would.
+#[must_use]
+pub fn port_in_use(port: u16) -> bool {
+    std::net::TcpListener::bind(("127.0.0.1", port)).is_err()
+}
+
 const UNIT: &str = include_str!("../deploy/systemd/seedling.service");
 const SYSUSERS: &str = include_str!("../deploy/systemd/brigid.conf");
 
