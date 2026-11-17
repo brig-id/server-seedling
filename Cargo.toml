@@ -54,6 +54,13 @@ time = "0.3"
 # geteuid, and dropping root for a command typed on the machine (src/machine.rs).
 libc = "0.2"
 
+# A static (musl) build carries its own OpenSSL: the system's is not there to
+# link to. OpenSSL is reached only by the attestation code of webauthn-rs,
+# which brig·id never runs (attestation "none"); the linked code is still
+# audited like the rest.
+[target.'cfg(target_env = "musl")'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
+
 [build-dependencies]
 flate2 = "1"
 

@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Without `--config`, the server and its commands read
   `/etc/brigid/seedling.toml` when it exists, and the master key at
   `/etc/brigid/master.key` when the environment names none.
+- **Static executables** (#77): each release carries `seedling` for x86-64
+  and arm64 Linux, built with musl and linking nothing (OpenSSL vendored), so
+  it runs on any distribution. With them: `SHA256SUMS`, an SPDX SBOM and a
+  build provenance attestation (`gh attestation verify`).
 
 ### Changed
 
@@ -27,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   as root on the machine (`seedling client list`) reads the master key, then
   works as the owner of the database's directory, so that no file of the
   database belongs to root.
+- **The image is made of the same static binary** (`Dockerfile.release`, on
+  `distroless/static`): no C library, no OpenSSL in it. Its arm64 variant no
+  longer compiles under emulation, so a release reaches the registry in
+  minutes instead of more than an hour. `Dockerfile` still builds the server
+  from source.
 
 ## [0.6.2] - 2026-11-16
 
