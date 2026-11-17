@@ -362,11 +362,19 @@ fn init_command(
          and forwards to it; or edit {} to give the server a certificate of its own.",
         options.config.display()
     );
-    if systemd {
+    if machine::port_in_use(port) {
         eprintln!(
-            "\nThen:\n\n  systemd-sysusers\n  systemctl daemon-reload\n  systemctl enable --now seedling\n  \
-             journalctl -u seedling -n 20 --no-pager    # the setup link of the first administrator\n"
+            "\n⚠ Something on this machine already listens on port {port}: the server could not \
+             start there. Change `port` in {}, or run init again elsewhere with --port.",
+            options.config.display()
         );
+    }
+    if systemd {
+        eprintln!("\nThen (the last command shows the setup link of the first administrator):\n");
+        for line in machine::START_COMMANDS.lines() {
+            eprintln!("  {line}");
+        }
+        eprintln!();
     } else {
         eprintln!(
             "\nThen start `seedling` as the user who owns {}: it prints the setup link of the \

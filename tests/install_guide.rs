@@ -109,3 +109,26 @@ fn every_command_of_the_guide_is_one_seedling_knows() {
         );
     }
 }
+
+/// Step 3 of the guide is what `seedling init --systemd` prints: the same
+/// four commands, word for word.
+#[test]
+fn the_guide_starts_the_server_as_init_says() {
+    let guide = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/install.md"))
+        .expect("docs/install.md");
+    let step = guide
+        .split("\n## 3. ")
+        .nth(1)
+        .expect("a step 3")
+        .split("\n## ")
+        .next()
+        .unwrap();
+    let block = step
+        .split("```sh\n")
+        .nth(1)
+        .expect("a shell block in step 3")
+        .split("```")
+        .next()
+        .unwrap();
+    assert_eq!(block, seedling::machine::START_COMMANDS);
+}

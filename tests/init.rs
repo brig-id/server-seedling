@@ -93,6 +93,31 @@ fn a_fresh_machine_runs_from_what_init_writes_and_prints_the_setup_link() {
 }
 
 #[test]
+fn init_says_when_its_port_is_taken() {
+    let dir = tempfile::tempdir().unwrap();
+    let taken = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = taken.local_addr().unwrap().port();
+    let out = Command::new(seedling_bin())
+        .arg("--config")
+        .arg(dir.path().join("seedling.toml"))
+        .args(["init", "--domain", "id.example.org", "--port"])
+        .arg(port.to_string())
+        .arg("--key-file")
+        .arg(dir.path().join("master.key"))
+        .arg("--data-dir")
+        .arg(dir.path().join("data"))
+        .env_clear()
+        .output()
+        .unwrap();
+    let said = String::from_utf8_lossy(&out.stderr);
+    assert!(out.status.success(), "{said}");
+    assert!(
+        said.contains(&format!("already listens on port {port}")),
+        "{said}"
+    );
+}
+
+#[test]
 fn a_bad_domain_writes_nothing() {
     let dir = tempfile::tempdir().unwrap();
     let config = dir.path().join("seedling.toml");
