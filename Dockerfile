@@ -120,6 +120,8 @@ RUN mkdir src && echo 'fn main() {}' > src/main.rs && \
 # a release build fails without it, and without its list of script hashes.
 COPY build.rs ./
 COPY src/ ./src/
+# The systemd unit `seedling init --systemd` writes is compiled in.
+COPY deploy/systemd/ ./deploy/systemd/
 COPY --from=ui-builder /ui/dist /ui-dist
 ENV BRIGID_UI_DIST=/ui-dist
 
