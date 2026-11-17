@@ -137,5 +137,11 @@ fn systemd_accepts_the_unit() {
         .output()
         .unwrap();
     let said = String::from_utf8_lossy(&out.stderr);
-    assert!(out.status.success() && said.trim().is_empty(), "{said}");
+    // A machine's systemd also speaks of its own units (an option of theirs
+    // it no longer supports): only what it says of this one counts.
+    let ours: Vec<&str> = said
+        .lines()
+        .filter(|line| line.contains("seedling.service"))
+        .collect();
+    assert!(out.status.success() && ours.is_empty(), "{said}");
 }
