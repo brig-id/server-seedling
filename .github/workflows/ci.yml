@@ -168,8 +168,9 @@ jobs:
           file out/seedling | grep -Eq "static(-pie)? linked|statically linked"
           version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | sed -n 1p)
           test "$(out/seedling --version)" = "seedling $version"
-          # Alpine: musl, and no OpenSSL. A server there answers.
-          docker run -d --name bare -p 18080:8080 -v "$PWD/out:/b:ro" \
+          # Alpine: musl, and no OpenSSL. A server there answers. As an
+          # ordinary user: seedling refuses to run as root.
+          docker run -d --name bare --user 65532:65532 -p 18080:8080 -v "$PWD/out:/b:ro" \
             -e BRIGID_MASTER_KEY=0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0 \
             -e BRIGID_SERVER__DOMAIN=localhost -e BRIGID_SERVER__HOST=0.0.0.0 \
             -e BRIGID_DATABASE__PATH=/tmp/brigid.db \
