@@ -2,11 +2,7 @@
 //! every `seedling` command it shows is given to the real argument parser,
 //! which refuses a command or an option that does not exist.
 
-mod common;
-
 use std::{fs, process::Command};
-
-use common::seedling_bin;
 
 /// The words of a command line as a shell splits them: spaces separate,
 /// double quotes keep a phrase together, `#` starts a comment.
@@ -100,7 +96,7 @@ fn every_command_of_the_guide_is_one_seedling_knows() {
         if args != ["--version"] {
             args.push("--help");
         }
-        let out = Command::new(seedling_bin())
+        let out = Command::new(env!("CARGO_BIN_EXE_seedling"))
             .args(&args)
             .env_clear()
             .output()
