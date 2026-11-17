@@ -118,6 +118,7 @@ docker build -t brigid/seedling .
 docker compose -f deploy/compose.dev.yaml up
 curl http://localhost:8080/health
 seedling healthcheck                     # liveness probe (Docker HEALTHCHECK), exit 0/1
+seedling init --domain id.example.org [--systemd]   # a fresh machine: configuration, key, unit (overwrites nothing)
 seedling admin link                      # an address that makes the signed-in account that opens it an administrator
 seedling signup [open|invitation|closed] # who may create an account: prints it, or sets it
 seedling client add|list|attributes|remove   # registered applications

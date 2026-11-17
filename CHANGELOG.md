@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`seedling init`** prepares a machine (brig-id/server-seedling#76): a
+  configuration for a server behind a reverse proxy
+  (`/etc/brigid/seedling.toml`) and a new master key
+  (`/etc/brigid/master.key`, root-only), or none with `--no-key-file` when
+  the key comes from another disk. With `--systemd`, the unit
+  (`deploy/systemd/seedling.service`, hardened, runs as `brigid`, gets the
+  key as a systemd credential) and the system user. It overwrites nothing.
+- Without `--config`, the server and its commands read
+  `/etc/brigid/seedling.toml` when it exists, and the master key at
+  `/etc/brigid/master.key` when the environment names none.
+
+### Changed
+
+- **The server does not run as root**: it says so and stops. A command typed
+  as root on the machine (`seedling client list`) reads the master key, then
+  works as the owner of the database's directory, so that no file of the
+  database belongs to root.
+
 ## [0.6.2] - 2026-11-16
 
 ### Changed

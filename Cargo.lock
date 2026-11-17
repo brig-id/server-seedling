@@ -3105,6 +3105,7 @@ dependencies = [
  "figment",
  "flate2",
  "http-body-util",
+ "libc",
  "reqwest",
  "rustls",
  "serde",

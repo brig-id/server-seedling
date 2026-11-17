@@ -21,7 +21,7 @@ use std::{
     time::Duration,
 };
 
-use seedling::{Ui, apply_ui, metrics, probe};
+use seedling::{Ui, apply_ui, machine, metrics, probe};
 
 use clap::{Parser, Subcommand};
 use tracing_subscriber::{EnvFilter, fmt};
@@ -99,6 +99,32 @@ enum Command {
     Signup {
         /// `open`, `invitation` or `closed`.
         policy: Option<String>,
+    },
+
+    /// Prepare this machine: a configuration and a master key, and with
+    /// `--systemd` the unit and the system user that run the server. Writes
+    /// to `--config` (default /etc/brigid/seedling.toml). Overwrites nothing.
+    Init {
+        /// The domain people reach this server at: `id.example.org`.
+        #[arg(long)]
+        domain: String,
+        /// Where the master key lives.
+        #[arg(long, default_value = machine::KEY_PATH)]
+        key_file: PathBuf,
+        /// Do not create the key: it is supplied at `--key-file` from
+        /// elsewhere (another disk, for one), so that a copy of this disk
+        /// cannot be read without it.
+        #[arg(long)]
+        no_key_file: bool,
+        /// The directory of the database.
+        #[arg(long, default_value = machine::DATA_DIR)]
+        data_dir: PathBuf,
+        /// The local port the server listens on, behind a reverse proxy.
+        #[arg(long, default_value_t = 8080)]
+        port: u16,
+        /// Also write the systemd unit and the system user `brigid`.
+        #[arg(long)]
+        systemd: bool,
     },
 
     /// Liveness probe for Docker's HEALTHCHECK: GET the local `/health`,
@@ -240,12 +266,7 @@ fn db_url(path: &str) -> String {
 }
 
 /// Handles `seedling rotate-key --old <path> --new <path>`.
-async fn rotate_key(db: &config::DatabaseConfig, old_path: &Path, new_path: &Path) {
-    let old_master = MasterKey::from_file(old_path)
-        .expect("failed to read the old master key file (64 hex chars expected)");
-    let new_master = MasterKey::from_file(new_path)
-        .expect("failed to read the new master key file (64 hex chars expected)");
-
+async fn rotate_key(db: &config::DatabaseConfig, old_master: MasterKey, new_master: MasterKey) {
     let mut store = EncryptedStore::new(&db_url(&db.path), old_master)
         .await
         .expect("failed to open or migrate database");
@@ -265,20 +286,135 @@ async fn rotate_key(db: &config::DatabaseConfig, old_path: &Path, new_path: &Pat
     eprintln!("Update BRIGID_MASTER_KEY to the new key before starting seedling again.");
 }
 
+/// For a command run as root: reads the master key while it still can
+/// (`with_key`), then becomes the owner of the database's directory, so that
+/// no file of the database ends up belonging to root. Does nothing for any
+/// other user.
+fn as_owner_of_database(database: &Path, with_key: bool) {
+    if machine::effective_uid() != 0 {
+        return;
+    }
+    if with_key {
+        match master_key_hex() {
+            Ok(hex) => {
+                let _ = PRELOADED_KEY.set(hex);
+            }
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
+        }
+    }
+    if let Err(e) = machine::become_owner_of_database(database) {
+        eprintln!("{e}");
+        std::process::exit(1);
+    }
+}
+
+/// Handles `seedling init`.
+fn init_command(
+    config: Option<&Path>,
+    domain: &str,
+    key_file: &Path,
+    no_key_file: bool,
+    data_dir: &Path,
+    port: u16,
+    systemd: bool,
+) {
+    let executable = systemd.then(|| {
+        std::env::current_exe()
+            .and_then(std::fs::canonicalize)
+            .expect("cannot tell where this executable is")
+    });
+    let options = machine::InitOptions {
+        domain: domain.to_owned(),
+        config: config.map_or_else(|| machine::CONFIG_PATH.into(), Path::to_path_buf),
+        key_file: key_file.to_owned(),
+        create_key: !no_key_file,
+        data_dir: data_dir.to_owned(),
+        port,
+        systemd: executable,
+    };
+    let written = match machine::init(&options) {
+        Ok(written) => written,
+        Err(e) => {
+            eprintln!("✗ {e}");
+            std::process::exit(1);
+        }
+    };
+    for path in &written {
+        eprintln!("✓ wrote {}", path.display());
+    }
+    if options.create_key {
+        eprintln!(
+            "\nKeep a copy of {} somewhere else, offline: without it the database cannot be \
+             read, by anyone.",
+            options.key_file.display()
+        );
+    } else {
+        eprintln!(
+            "\nNo key was created: put it at {} (64 hex characters) before the first start.",
+            options.key_file.display()
+        );
+    }
+    eprintln!(
+        "\nThe server listens on 127.0.0.1:{port}. A reverse proxy holds the certificate of {domain} \
+         and forwards to it; or edit {} to give the server a certificate of its own.",
+        options.config.display()
+    );
+    if systemd {
+        eprintln!(
+            "\nThen:\n\n  systemd-sysusers\n  systemctl daemon-reload\n  systemctl enable --now seedling\n  \
+             journalctl -u seedling -n 20 --no-pager    # the setup link of the first administrator\n"
+        );
+    } else {
+        eprintln!(
+            "\nThen start `seedling` as the user who owns {}: it prints the setup link of the \
+             first administrator.",
+            options.data_dir.display()
+        );
+    }
+}
+
 /// How long a retired OIDC key keeps verifying: the one-hour token lifetime
 /// plus a margin for clock skew and refresh in flight.
 const OIDC_GRACE: time::Duration = time::Duration::hours(2);
 
-/// Reads the master key from `BRIGID_MASTER_KEY_FILE` (preferred, a mounted
-/// secret) or `BRIGID_MASTER_KEY`.
-fn load_master_key() -> MasterKey {
-    match std::env::var_os("BRIGID_MASTER_KEY_FILE") {
-        Some(path) => MasterKey::from_file(Path::new(&path)).expect(
-            "BRIGID_MASTER_KEY_FILE must point to a file containing a 64-character hex string (32 bytes)",
-        ),
-        None => MasterKey::from_env()
-            .expect("BRIGID_MASTER_KEY (or BRIGID_MASTER_KEY_FILE) must be set to a 64-character hex string (32 bytes)"),
+/// A key read before this process became the owner of the database (see
+/// `machine::become_owner_of_database`): the file may be readable by root only.
+static PRELOADED_KEY: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// The master key, in hex, from the first of: `BRIGID_MASTER_KEY_FILE` (a
+/// mounted secret, or the credential systemd hands the service),
+/// `BRIGID_MASTER_KEY`, or the file `seedling init` writes
+/// (/etc/brigid/master.key). Never from the configuration file.
+fn master_key_hex() -> Result<String, String> {
+    let read =
+        |path: &Path| std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()));
+    if let Some(path) = std::env::var_os("BRIGID_MASTER_KEY_FILE") {
+        return read(Path::new(&path));
     }
+    if let Ok(hex) = std::env::var("BRIGID_MASTER_KEY") {
+        return Ok(hex);
+    }
+    let default = Path::new(machine::KEY_PATH);
+    if default.exists() {
+        return read(default);
+    }
+    Err(format!(
+        "no master key: set BRIGID_MASTER_KEY_FILE to a file holding it, or BRIGID_MASTER_KEY, \
+         or create {} with `seedling init`",
+        machine::KEY_PATH
+    ))
+}
+
+fn load_master_key() -> MasterKey {
+    let hex = match PRELOADED_KEY.get() {
+        Some(hex) => hex.clone(),
+        None => master_key_hex().unwrap_or_else(|e| panic!("{e}")),
+    };
+    MasterKey::from_hex(hex.trim())
+        .expect("the master key must be a 64-character hex string (32 bytes)")
 }
 
 /// The current OIDC key and the retired ones still in grace. A database
@@ -561,6 +697,44 @@ async fn main() {
         }
     }
 
+    // Writes files and opens nothing: no logging setup, no key.
+    if let Some(Command::Init {
+        domain,
+        key_file,
+        no_key_file,
+        data_dir,
+        port,
+        systemd,
+    }) = &cli.command
+    {
+        init_command(
+            cli.config.as_deref(),
+            domain,
+            key_file,
+            *no_key_file,
+            data_dir,
+            *port,
+            *systemd,
+        );
+        return;
+    }
+
+    // The server never runs as root (under systemd it runs as `brigid`).
+    if cli.command.is_none() && machine::effective_uid() == 0 {
+        eprintln!(
+            "seedling does not run as root. Start it as an unprivileged user: the systemd \
+             unit written by `seedling init --systemd` runs it as `brigid`."
+        );
+        std::process::exit(1);
+    }
+
+    // Without --config: the file `seedling init` writes, if there is one. A
+    // container has none, and is configured by its environment.
+    let mut cli = cli;
+    if cli.config.is_none() && Path::new(machine::CONFIG_PATH).exists() {
+        cli.config = Some(machine::CONFIG_PATH.into());
+    }
+
     // Structured JSON logs — verbosity controlled by RUST_LOG.
     fmt()
         .json()
@@ -583,8 +757,21 @@ async fn main() {
     // no reason, since rotate-key never touches server/TLS/CORS settings.
     if let Some(Command::RotateKey { old, new }) = cli.command {
         let db = config::load_database(cli.config.as_deref()).expect("configuration error");
-        rotate_key(&db, &old, &new).await;
+        // Read as whoever runs this (root may be the only one who can), then
+        // the database is touched as its owner.
+        let old_master = MasterKey::from_file(&old)
+            .expect("failed to read the old master key file (64 hex chars expected)");
+        let new_master = MasterKey::from_file(&new)
+            .expect("failed to read the new master key file (64 hex chars expected)");
+        as_owner_of_database(Path::new(&db.path), false);
+        rotate_key(&db, old_master, new_master).await;
         return;
+    }
+    // Every other command works on the database: as root, it reads the key
+    // first, then becomes the database's owner.
+    if cli.command.is_some() {
+        let db = config::load_database(cli.config.as_deref()).expect("configuration error");
+        as_owner_of_database(Path::new(&db.path), true);
     }
     if let Some(Command::RotateOidcKey) = cli.command {
         let db = config::load_database(cli.config.as_deref()).expect("configuration error");
