@@ -8,7 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-17
+
+Anyone can install it: one executable for any Linux, a command that prepares
+the machine, and a guide from download to a person signed in on a website
+([docs/install.md](docs/install.md)). A database of 0.6 is used as it is.
+
 ### Added
+
+- **The installation guide** (#80), each of its `seedling` commands checked
+  by a test against the program.
 
 - **`seedling init`** prepares a machine (brig-id/server-seedling#76): a
   configuration for a server behind a reverse proxy
@@ -36,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   longer compiles under emulation, so a release reaches the registry in
   minutes instead of more than an hour. `Dockerfile` still builds the server
   from source.
+- The interface embedded is brig-id/app 0.6.0: the same as in 0.6.2, now
+  under its released version, which the administration shows.
 
 ## [0.6.2] - 2026-11-16
 
