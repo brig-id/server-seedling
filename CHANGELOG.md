@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-17
+
+### Fixed
+
+- **Every passkey of an account carries the same name** (`name@server`) in
+  the passkey manager: one added later, or made with the recovery code, was
+  named `name` alone (brig-id/core#110). Passkeys already made keep their
+  name.
+
+### Changed
+
+- **The version is on the About page**, to anyone: "seedling 0.7.1 ·
+  interface 0.7.0". The server says it in `GET /auth/server`.
+- **The release files have no version in their names**
+  (`seedling-linux-x86_64`, `seedling-linux-aarch64`, `seedling.spdx.json`):
+  `releases/latest/download/…` is always the newest, so the guide installs
+  and updates with the same commands, and leaves no file behind.
+- `seedling init` prints the same start commands as the guide, with `sudo`,
+  and warns when its port is taken.
+- The installation guide: what the master key protects, what any reverse
+  proxy must do (replace `X-Forwarded-For`), Caddy and nginx as examples or
+  no proxy, choosing the port, updating.
+- The interface embedded is brig-id/app 0.7.0.
+
 ## [0.7.0] - 2026-11-17
 
 Anyone can install it: one executable for any Linux, a command that prepares
@@ -18,7 +42,6 @@ the machine, and a guide from download to a person signed in on a website
 
 - **The installation guide** (#80), each of its `seedling` commands checked
   by a test against the program.
-
 - **`seedling init`** prepares a machine (brig-id/server-seedling#76): a
   configuration for a server behind a reverse proxy
   (`/etc/brigid/seedling.toml`) and a new master key
