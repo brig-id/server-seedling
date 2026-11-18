@@ -5,7 +5,7 @@ master key lives in one place and a rebuilt VM gets it back without anyone pasti
 
 | What | Where |
 | ---- | ----- |
-| OpenBao | `https://bao.baxyz.dev:8200`, reachable on the tailnet only |
+| OpenBao | `https://bao.baxyz.dev`, reachable on the tailnet only |
 | Secret | KV v2 mount `kv`, path `prod/brig-id/leaf-1` |
 | Fields | `BRIGID_MASTER_KEY` (64 hex), `ORACLE_CLOUD_PUBLIC_IP`, `ORACLE_CLOUD_PRIVATE_IP` |
 | VM credentials | AppRole `leaf-1`, files `/etc/brigid/bao-role-id` and `/etc/brigid/bao-secret-id` |
@@ -27,10 +27,10 @@ In the Tailscale admin console:
    // The tailnet IP of the machine serving OpenBao (what bao.baxyz.dev resolves to).
    "hosts":     { "fajro": "100.67.31.127" },
    "grants": [
-     { "src": ["tag:brigid-seedling"], "dst": ["fajro"], "ip": ["tcp:8200"] }
+     { "src": ["tag:brigid-seedling"], "dst": ["fajro"], "ip": ["tcp:443"] }
    ],
    "tests": [
-     { "src": "tag:brigid-seedling", "accept": ["fajro:8200"], "deny": ["fajro:22"] }
+     { "src": "tag:brigid-seedling", "accept": ["fajro:443"], "deny": ["fajro:22"] }
    ]
    ```
 
@@ -44,7 +44,7 @@ curl -fsSL https://tailscale.com/install.sh | sh
 # --accept-dns=false: bao.baxyz.dev is in public DNS, and Docker keeps the VM's resolver
 sudo tailscale up --auth-key=tskey-auth-... --hostname=brigid-leaf-1 --accept-dns=false
 tailscale ip -4                                    # the VM's tailnet IP, used in step 2
-curl -sS https://bao.baxyz.dev:8200/v1/sys/health  # must answer
+curl -sS https://bao.baxyz.dev/v1/sys/health       # must answer
 ```
 
 No inbound port is needed: Tailscale connects outbound (UDP 41641, or HTTPS relays).
