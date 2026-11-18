@@ -149,7 +149,15 @@ sudo journalctl -u seedling -n 20 --no-pager
 ```
 
 Open the address `https://id.example.org/setup/#link=…` it shows, within the
-hour, and create the account with your passkey. Then keep the recovery code
+hour: the last one, if it shows several (each start makes a new one and
+cancels the one before). Expired, or not there? This
+prints a new one, with no restart (the earlier one stops working):
+
+```sh
+sudo seedling admin link
+```
+
+Then create the account with your passkey. Keep the recovery code
 the onboarding gives you: nobody, an administrator included, can give access
 back to an account.
 
@@ -225,7 +233,7 @@ The **About** page of the server says which version runs.
 ```sh
 sudo seedling --version                 # what runs
 sudo seedling client list               # the registered applications
-sudo seedling admin link                # an administrator again, if every administrator lost their passkeys
+sudo seedling admin link                # a new setup link; or, once accounts exist, an administrator again
 sudo journalctl -u seedling -f          # what it says
 ```
 

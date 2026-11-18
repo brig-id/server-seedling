@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   and updates with the same commands, and leaves no file behind.
 - `seedling init` prints the same start commands as the guide, with `sudo`,
   and warns when its port is taken.
+- **`seedling admin link` on a server with no account prints a new setup
+  link**, which the running server takes at once: an expired or lost one no
+  longer needs a restart. The earlier one stops working.
 - The installation guide: what the master key protects, what any reverse
   proxy must do (replace `X-Forwarded-For`), Caddy and nginx as examples or
   no proxy, choosing the port, updating.

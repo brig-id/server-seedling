@@ -1040,6 +1040,23 @@ async fn a_new_server_takes_its_first_administrator_from_the_link_it_prints() {
         assert_eq!(resp.status(), 204);
         Ok(session_cookie(&resp))
     };
+    // Lost, or expired: the machine makes a new one, with no restart, and the
+    // one the server printed stops working.
+    let (ok, out, err) = seedling(&server.db_path, &["admin", "link"]);
+    assert!(ok, "{out}{err}");
+    assert!(err.contains("No account yet"), "{err}");
+    let fresh = address_in(&out, "/setup/#link=").expect("a setup address");
+    let printed = link;
+    let link = fresh.split("link=").nth(1).unwrap().to_owned();
+    assert_ne!(link, printed);
+    let refused = sign_up(
+        &mut WebauthnAuthenticator::new(SoftPasskey::new(true)),
+        &printed,
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(refused["code"], "link_invalid");
+
     let cookie = sign_up(&mut passkey, &link)
         .await
         .expect("the first account");
