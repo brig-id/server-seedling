@@ -16,7 +16,7 @@
 #                                      and /etc/brigid/bao-secret-id)
 #
 # Settings (environment, all optional):
-#   BAO_ADDR     https://bao.baxyz.dev:8200 (on the tailnet only: the VM must run Tailscale)
+#   BAO_ADDR     https://bao.baxyz.dev (on the tailnet only: the VM must run Tailscale)
 #   BAO_MOUNT    kv
 #   BAO_PATH     prod/brig-id/leaf-1
 #   BAO_FIELD    BRIGID_MASTER_KEY
@@ -27,7 +27,7 @@
 # procedure (re-encrypt the database with `seedling rotate-key`, then swap the secret).
 set -euo pipefail
 
-BAO_ADDR="${BAO_ADDR:-https://bao.baxyz.dev:8200}"
+BAO_ADDR="${BAO_ADDR:-https://bao.baxyz.dev}"
 BAO_MOUNT="${BAO_MOUNT:-kv}"
 BAO_PATH="${BAO_PATH:-prod/brig-id/leaf-1}"
 BAO_FIELD="${BAO_FIELD:-BRIGID_MASTER_KEY}"
