@@ -139,9 +139,12 @@ enum Command {
 
 #[derive(Subcommand)]
 enum AdminCommand {
-    /// Print a link that makes an administrator of the signed-in account
-    /// that opens it. For a server that has accounts and no administrator,
-    /// or whose administrators all lost their passkeys. One use, one hour.
+    /// Print a link that makes an administrator. On a server with no
+    /// account yet: a new setup link, which creates the first account (the
+    /// one the server printed at its start stops working). Otherwise: a link
+    /// that makes an administrator of the signed-in account that opens it,
+    /// for a server whose administrators all lost their passkeys. One use,
+    /// one hour.
     Link,
 }
 
@@ -536,7 +539,7 @@ async fn announce_administration(state: &AppState) {
             // in the log for whoever reads it from a service manager.
             eprintln!(
                 "\nThis server has no administrator yet. To become it, open:\n\n  {address}\n\n\
-                 The link works once, for an hour; restarting the server makes a new one.\n"
+                 The link works once, for an hour; `seedling admin link` makes a new one.\n"
             );
             tracing::warn!(setup_link = %address, "no administrator yet: open the setup link");
         }
@@ -799,13 +802,24 @@ async fn main() {
         let store = EncryptedStore::new(&db_url(&cfg.database.path), load_master_key())
             .await
             .expect("failed to open or migrate database");
+        let base = public_url(&cfg).as_str().trim_end_matches('/').to_owned();
+        // No account yet: a new setup link, which creates the first one.
+        // The running server takes it at once; no restart.
+        if let Some(link) = brigid_api::setup_link(&store)
+            .await
+            .expect("failed to make the link")
+        {
+            println!("{base}/setup/#link={link}");
+            eprintln!(
+                "✓ No account yet: this address creates the first one, which administers the \
+                 server.\n  It works once, for an hour, and replaces any earlier setup link."
+            );
+            return;
+        }
         let link = brigid_api::administrator_link(&store)
             .await
             .expect("failed to make the link");
-        println!(
-            "{}/admin/claim/#link={link}",
-            public_url(&cfg).as_str().trim_end_matches('/')
-        );
+        println!("{base}/admin/claim/#link={link}");
         eprintln!(
             "✓ Open this address signed in as the account that will administer the server.\n  It works once, for an hour."
         );
