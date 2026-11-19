@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **The server is `brigid-server`, from core** (core#94): configuration, the
+  operator commands, startup, the embedded interface and the metrics moved
+  there, unchanged, so that grove runs the very same code. seedling keeps
+  `init`, its systemd files, and the interface it embeds. Messages that named
+  seedling for every command now say "the server" where they are shared.
+
 ## [0.7.1] - 2026-11-17
 
 ### Fixed

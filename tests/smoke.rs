@@ -252,7 +252,7 @@ async fn the_interface_is_served_and_an_unknown_path_is_not_a_page() {
 /// One that does carries on with its own: this test is about the first.
 #[test]
 fn a_directory_without_its_list_of_hashes_is_not_served() {
-    if seedling::Ui::embedded().is_some() {
+    if seedling::Ui::embedded(&seedling::UI).is_some() {
         return;
     }
     let ui_dir = tempfile::TempDir::new().expect("tempdir");
