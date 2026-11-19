@@ -10,13 +10,13 @@ issues, pull requests. No exceptions.
 
 ## Scope
 
-- Binary `seedling` (`src/main.rs`) — the only entry point
-- Configuration loading (`seedling.toml` + env vars via `figment`)
-- Serving the interface (`src/ui.rs`): embedded in the executable at compile time
-  (`build.rs`, `BRIGID_UI_DIST`; a release build fails without it), or read from
-  `server.ui_dist_dir`, the development option. A page is a file of the build, an unknown
-  path is `404`, and the pages are served under the policy made of the build's script
-  hashes, never `'unsafe-inline'`
+- Binary `seedling` (`src/main.rs`) — the only entry point. The server itself (configuration,
+  operator commands, startup, the embedded interface, metrics) is **`brigid-server` in
+  `brig-id/core`**, the same for every edition: seedling describes itself (`EDITION` in
+  `src/lib.rs`) and calls `brigid_server::run`. Change behaviour there, not here.
+- What is seedling's own: `seedling init` and the systemd files (`src/machine.rs`,
+  `deploy/systemd/`), the interface embedded at compile time (`build.rs` calls
+  `brigid-ui-embed`, `BRIGID_UI_DIST`; a release build fails without it)
 - Docker multi-stage build + distroless image
 - Docker Compose deploy setup (`deploy/`)
 - E2E smoke tests (`tests/e2e/`)
@@ -95,7 +95,7 @@ Format: `type(scope): <emoji> description`
 | Scope | Maps to |
 | --- | --- |
 | `seedling` | `src/main.rs`, binary entry point |
-| `config` | Configuration loading (`src/config.rs`) |
+| `config` | Configuration examples (`seedling.example.toml`); the loading is in core's `brigid-server` |
 | `docker` | `Dockerfile`, `deploy/` |
 | `ci` | `.github/workflows/` |
 | `deps` | Dependency bumps |

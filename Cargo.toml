@@ -14,45 +14,14 @@ path = "src/main.rs"
 path = "src/lib.rs"
 
 [dependencies]
-# brig·id core crates (git dep pointing to the core repository)
-brigid-api = { git = "https://github.com/brig-id/core", rev = "27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb", package = "brigid-api" }
-brigid-store = { git = "https://github.com/brig-id/core", rev = "27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb", package = "brigid-store" }
-brigid-identity = { git = "https://github.com/brig-id/core", rev = "27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb", package = "brigid-identity" }
-brigid-webauthn = { git = "https://github.com/brig-id/core", rev = "27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb", package = "brigid-webauthn" }
-brigid-oidc = { git = "https://github.com/brig-id/core", rev = "27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb", package = "brigid-oidc" }
+# The server every edition runs, and the crates of brig·id it is made of
+# (git dependencies pointing to the core repository).
+brigid-server = { git = "https://github.com/brig-id/core", rev = "47af51cf9bf1f1dabc6e21b943593e6ac8710ad7", package = "brigid-server" }
 
-# Cryptographic primitives
-brigid-crypto = { git = "https://github.com/brig-id/crypto", tag = "v0.1.0" }
-
-# CLI + configuration
 clap = { version = "4", features = ["derive", "env"] }
-figment = { version = "0.10", features = ["toml", "env"] }
-
-# Async runtime
 tokio = { version = "1", features = ["full"] }
-
-# Logging / tracing
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
-
-# HTTP / TLS
-axum = "0.8"
-axum-server = { version = "0.9", features = ["tls-rustls"] }
-tower-http = { version = "0.7", features = ["set-header"] }
-# The embedded interface is compressed at build time (`build.rs`); a client
-# that takes no compression gets it unpacked.
-flate2 = "1"
-# Only used to install a default process-wide `CryptoProvider` at startup —
-# see the call site in main.rs for why this is needed.
-rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs"] }
-
-# Misc
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# `seedling init` checks the domain it is given (src/machine.rs).
 url = "2"
-time = "0.3"
-# geteuid, and dropping root for a command typed on the machine (src/machine.rs).
-libc = "0.2"
 
 # A static (musl) build carries its own OpenSSL: the system's is not there to
 # link to. OpenSSL is reached only by the attestation code of webauthn-rs,
@@ -62,9 +31,16 @@ libc = "0.2"
 openssl = { version = "0.10", features = ["vendored"] }
 
 [build-dependencies]
-flate2 = "1"
+brigid-ui-embed = { git = "https://github.com/brig-id/core", rev = "47af51cf9bf1f1dabc6e21b943593e6ac8710ad7", package = "brigid-ui-embed" }
 
 [dev-dependencies]
+# Re-open the database a test server wrote (tests/binary.rs).
+brigid-store = { git = "https://github.com/brig-id/core", rev = "47af51cf9bf1f1dabc6e21b943593e6ac8710ad7", package = "brigid-store" }
+brigid-crypto = { git = "https://github.com/brig-id/crypto", tag = "v0.1.0" }
+# The interface as the server serves it (tests/static_files.rs) and the JSON
+# the tests read.
+axum = "0.8"
+serde_json = "1"
 figment = { version = "0.10", features = ["test"] }
 http-body-util = "0.1"
 tempfile = "3"

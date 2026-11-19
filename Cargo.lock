@@ -407,7 +407,7 @@ dependencies = [
 [[package]]
 name = "brigid-api"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb#27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb"
+source = "git+https://github.com/brig-id/core?rev=47af51cf9bf1f1dabc6e21b943593e6ac8710ad7#47af51cf9bf1f1dabc6e21b943593e6ac8710ad7"
 dependencies = [
  "axum",
  "base64ct",
@@ -453,7 +453,7 @@ dependencies = [
 [[package]]
 name = "brigid-identity"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb#27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb"
+source = "git+https://github.com/brig-id/core?rev=47af51cf9bf1f1dabc6e21b943593e6ac8710ad7#47af51cf9bf1f1dabc6e21b943593e6ac8710ad7"
 dependencies = [
  "base64ct",
  "brigid-crypto",
@@ -469,7 +469,7 @@ dependencies = [
 [[package]]
 name = "brigid-oidc"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb#27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb"
+source = "git+https://github.com/brig-id/core?rev=47af51cf9bf1f1dabc6e21b943593e6ac8710ad7#47af51cf9bf1f1dabc6e21b943593e6ac8710ad7"
 dependencies = [
  "base64ct",
  "brigid-identity",
@@ -488,9 +488,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "brigid-server"
+version = "0.1.0"
+source = "git+https://github.com/brig-id/core?rev=47af51cf9bf1f1dabc6e21b943593e6ac8710ad7#47af51cf9bf1f1dabc6e21b943593e6ac8710ad7"
+dependencies = [
+ "axum",
+ "axum-server",
+ "brigid-api",
+ "brigid-crypto",
+ "brigid-identity",
+ "brigid-oidc",
+ "brigid-store",
+ "brigid-webauthn",
+ "clap",
+ "figment",
+ "flate2",
+ "libc",
+ "rustls",
+ "serde",
+ "serde_json",
+ "time",
+ "tokio",
+ "tower-http 0.7.1",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
 name = "brigid-store"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb#27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb"
+source = "git+https://github.com/brig-id/core?rev=47af51cf9bf1f1dabc6e21b943593e6ac8710ad7#47af51cf9bf1f1dabc6e21b943593e6ac8710ad7"
 dependencies = [
  "base64ct",
  "brigid-crypto",
@@ -509,9 +537,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "brigid-ui-embed"
+version = "0.1.0"
+source = "git+https://github.com/brig-id/core?rev=47af51cf9bf1f1dabc6e21b943593e6ac8710ad7#47af51cf9bf1f1dabc6e21b943593e6ac8710ad7"
+dependencies = [
+ "flate2",
+]
+
+[[package]]
 name = "brigid-webauthn"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb#27e30a91d330abd2852ddce8e4ed0f1aa7d4b8bb"
+source = "git+https://github.com/brig-id/core?rev=47af51cf9bf1f1dabc6e21b943593e6ac8710ad7#47af51cf9bf1f1dabc6e21b943593e6ac8710ad7"
 dependencies = [
  "brigid-crypto",
  "brigid-identity",
@@ -3137,31 +3173,20 @@ name = "seedling"
 version = "0.7.1"
 dependencies = [
  "axum",
- "axum-server",
  "base64ct",
- "brigid-api",
  "brigid-crypto",
- "brigid-identity",
- "brigid-oidc",
+ "brigid-server",
  "brigid-store",
- "brigid-webauthn",
+ "brigid-ui-embed",
  "clap",
  "figment",
- "flate2",
  "http-body-util",
- "libc",
  "openssl",
  "reqwest",
- "rustls",
- "serde",
  "serde_json",
  "tempfile",
- "time",
  "tokio",
  "tower",
- "tower-http 0.7.1",
- "tracing",
- "tracing-subscriber",
  "url",
  "webauthn-authenticator-rs",
  "webauthn-rs",
