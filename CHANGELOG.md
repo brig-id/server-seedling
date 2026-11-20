@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Websites with no registration** (core#113, spec#35): a website that
+  publishes a document describing itself
+  (`https://…/oauth-client-metadata.json`) and uses its address as its
+  `client_id` signs people in with no step on the server and no secret.
+  Which of them a server accepts: `seedling client policy open` (any, except
+  the refused ones; the default), `listed` (only the accepted ones) or
+  `registered` (none); `seedling client accept|refuse|unlist <url>`. The
+  install guide's step 7 says so.
+
 ### Changed
 
 - **The server is `brigid-server`, from core** (core#94): configuration, the

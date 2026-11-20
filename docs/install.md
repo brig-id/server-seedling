@@ -176,7 +176,28 @@ sudo seedling signup open
 
 ## 7. Connect a website
 
-Register it in **Administration → Applications**, or on the machine:
+**Most websites need nothing from you.** A website that describes itself
+publishes a small document (for example
+`https://notes.example.org/oauth-client-metadata.json`) and gives its address
+as its `client_id`: your server reads it and signs your people in to that
+website, with no registration and no secret to hand over. The person sees the
+website's domain and decides. Which of those websites your server accepts:
+
+```sh
+sudo seedling client policy              # what it is now: open, unless you changed it
+sudo seedling client policy open         # any, except the ones you refuse (the default)
+sudo seedling client policy listed       # only the ones you accept
+sudo seedling client policy registered   # none: only the websites you register below
+sudo seedling client accept https://notes.example.org/oauth-client-metadata.json
+sudo seedling client refuse https://phishing.example/oauth-client-metadata.json
+sudo seedling client unlist https://notes.example.org/oauth-client-metadata.json
+```
+
+An accepted website's logo is shown when people sign in to it; any other
+website is shown by its domain and the name it declares.
+
+**A website of your own, or one under development on your machine**, can be
+registered instead, in **Administration → Applications**, or on the machine:
 
 ```sh
 sudo seedling client add --name "Field Notes" --redirect-uri https://notes.example.org/callback --required email --optional given_name
@@ -232,7 +253,7 @@ The **About** page of the server says which version runs.
 
 ```sh
 sudo seedling --version                 # what runs
-sudo seedling client list               # the registered applications
+sudo seedling client list               # the applications: registered, and those that describe themselves
 sudo seedling admin link                # a new setup link; or, once accounts exist, an administrator again
 sudo journalctl -u seedling -f          # what it says
 ```
