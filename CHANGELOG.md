@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-20
+
 ### Added
 
 - **Websites with no registration** (core#113, spec#35): a website that
@@ -18,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the refused ones; the default), `listed` (only the accepted ones) or
   `registered` (none); `seedling client accept|refuse|unlist <url>`. The
   install guide's step 7 says so.
+- **The page that links an identity to a website names it by its address**
+  when the website describes itself: its declared name is shown beside it,
+  never instead (interface 0.9.0).
 
 ### Changed
 
@@ -26,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   there, unchanged, so that grove runs the very same code. seedling keeps
   `init`, its systemd files, and the interface it embeds. Messages that named
   seedling for every command now say "the server" where they are shared.
+- **The interface is brig-id/app 0.9.0** (the new mark as favicon, and the
+  page that names a website by its address).
 
 ## [0.7.1] - 2026-11-17
 
