@@ -172,24 +172,28 @@ fn systemd_accepts_the_unit() {
         eprintln!("systemd-analyze does not run here: skipped");
         return;
     }
-    let dir = tempfile::tempdir().unwrap();
-    let unit = dir.path().join("seedling.service");
-    fs::write(
-        &unit,
-        seedling::machine::unit_text(&seedling_bin(), &dir.path().join("master.key")),
-    )
-    .unwrap();
-    let out = Command::new("systemd-analyze")
-        .arg("verify")
-        .arg(&unit)
-        .output()
+    // Both ways of handing the key: a clear file, and one sealed by the
+    // machine.
+    for (key, sealed) in [("master.key", false), ("master.key.cred", true)] {
+        let dir = tempfile::tempdir().unwrap();
+        let unit = dir.path().join("seedling.service");
+        fs::write(
+            &unit,
+            seedling::machine::unit_text(&seedling_bin(), &dir.path().join(key), sealed),
+        )
         .unwrap();
-    let said = String::from_utf8_lossy(&out.stderr);
-    // A machine's systemd also speaks of its own units (an option of theirs
-    // it no longer supports): only what it says of this one counts.
-    let ours: Vec<&str> = said
-        .lines()
-        .filter(|line| line.contains("seedling.service"))
-        .collect();
-    assert!(out.status.success() && ours.is_empty(), "{said}");
+        let out = Command::new("systemd-analyze")
+            .arg("verify")
+            .arg(&unit)
+            .output()
+            .unwrap();
+        let said = String::from_utf8_lossy(&out.stderr);
+        // A machine's systemd also speaks of its own units (an option of
+        // theirs it no longer supports): only what it says of this one counts.
+        let ours: Vec<&str> = said
+            .lines()
+            .filter(|line| line.contains("seedling.service"))
+            .collect();
+        assert!(out.status.success() && ours.is_empty(), "{key}: {said}");
+    }
 }

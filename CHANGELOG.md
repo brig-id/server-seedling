@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **The master key sealed by the machine** (#98): `seedling init --systemd --seal`
+  seals the new key with `systemd-creds` (the TPM when there is one) in
+  `/etc/brigid/master.key.cred`, writes no clear file, and prints the key once to
+  keep offline; the unit uses `LoadCredentialEncrypted=`. `seedling seal-key
+  [--from FILE]` seals an existing key and switches the unit. A command typed as
+  root unseals it (core#115).
+
 ## [0.8.0] - 2026-11-20
 
 ### Added

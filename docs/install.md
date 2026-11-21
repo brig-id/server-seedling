@@ -66,6 +66,40 @@ it does not: someone who is root on the machine, or who takes the whole
 disk. For the second, keep the key on another disk:
 `--no-key-file --key-file /mnt/keys/master.key`, and put it there yourself.
 
+**Or seal the key with the machine.** On a machine with a TPM (most PCs and
+mini PCs from the last years; `systemd-analyze has-tpm2` says `yes`), the key
+can be sealed instead of written in clear:
+
+```sh
+sudo seedling init --domain id.example.org --systemd --seal
+```
+
+The key is then `/etc/brigid/master.key.cred`, encrypted by `systemd-creds`
+with the TPM: systemd unseals it for the service, and a command typed as root
+on the machine unseals it the same way. A copy of the disk, or the disk
+itself, is useless without this machine. `init` prints the key once, on its
+last line: that copy, kept offline, is the only way back if the machine or its
+TPM is replaced.
+
+| The key… | Protects a copy of the database, a backup | Protects the disk taken away |
+| --- | --- | --- |
+| in clear, root only (the default) | yes | no |
+| on another disk (`--no-key-file --key-file …`) | yes | yes, if that disk stays |
+| sealed by the TPM (`--seal`) | yes | yes |
+
+None of them protects against someone who is root on the running machine.
+
+A server installed with a clear key seals it afterwards, the server running:
+
+```sh
+sudo seedling seal-key            # seals /etc/brigid/master.key, switches the unit
+sudo systemctl daemon-reload && sudo systemctl restart seedling
+sudo journalctl -u seedling -n 20 --no-pager
+sudo shred -u /etc/brigid/master.key   # once it runs, and the key is kept offline
+```
+
+On a new machine, from the offline copy: `sudo seedling seal-key --from <file>`.
+
 **Keep a copy of the key somewhere else, offline.** Without it the database
 cannot be read, by anyone, you included.
 

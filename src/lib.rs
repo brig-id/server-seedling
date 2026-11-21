@@ -25,6 +25,7 @@ pub const EDITION: brigid_server::Edition = brigid_server::Edition {
     ui: UI,
     config_path: Some(machine::CONFIG_PATH),
     key_path: Some(machine::KEY_PATH),
+    sealed_key_path: Some(machine::SEALED_KEY_PATH),
     key_hint: ", or create /etc/brigid/master.key with `seedling init`",
     root_hint: ": the systemd unit written by `seedling init --systemd` runs it as `brigid`.",
 };
