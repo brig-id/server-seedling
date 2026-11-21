@@ -16,6 +16,23 @@ use common::{free_port, seedling_bin, wait_until_listening};
 
 #[test]
 fn a_fresh_machine_runs_from_what_init_writes_and_prints_the_setup_link() {
+    // The port is free when chosen, not reserved: another test running at the
+    // same time can take it before the server binds it. Then the server stops,
+    // and the whole machine is made again on another port.
+    let mut tries = 0;
+    loop {
+        tries += 1;
+        match fresh_machine() {
+            Ok(()) => return,
+            Err(lost) if tries < 3 => eprintln!("port taken meanwhile, trying another: {lost}"),
+            Err(lost) => panic!("the server never listened: {lost}"),
+        }
+    }
+}
+
+/// One fresh machine. `Err` only when the server stopped without listening
+/// (its port was taken); every other failure panics.
+fn fresh_machine() -> Result<(), String> {
     let dir = tempfile::tempdir().unwrap();
     let config = dir.path().join("etc/seedling.toml");
     let key = dir.path().join("etc/master.key");
@@ -73,12 +90,17 @@ fn a_fresh_machine_runs_from_what_init_writes_and_prints_the_setup_link() {
                 .find(|w| w.contains("/setup/#link="))
                 .map(str::to_owned)
         });
+    // Instrumented for coverage, the server starts slowly: a generous wait.
     let listening = wait_until_listening(
         SocketAddr::from(([127, 0, 0, 1], port)),
-        Duration::from_secs(20),
+        Duration::from_secs(60),
     );
+    let stopped = server.try_wait().ok().flatten();
     let _ = server.kill();
     let _ = server.wait();
+    if !listening && let Some(status) = stopped {
+        return Err(format!("the server on port {port} ended ({status})"));
+    }
 
     let link = link.expect("the server prints its setup link");
     assert!(
@@ -90,6 +112,7 @@ fn a_fresh_machine_runs_from_what_init_writes_and_prints_the_setup_link() {
         data.join("brigid.db").exists(),
         "the database is in the data directory"
     );
+    Ok(())
 }
 
 #[test]
