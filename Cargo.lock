@@ -407,7 +407,7 @@ dependencies = [
 [[package]]
 name = "brigid-api"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=e8ecfb76b7da0b44c8758b378a91d08d6c37e88f#e8ecfb76b7da0b44c8758b378a91d08d6c37e88f"
+source = "git+https://github.com/brig-id/core?rev=f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04#f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04"
 dependencies = [
  "axum",
  "base64ct",
@@ -455,7 +455,7 @@ dependencies = [
 [[package]]
 name = "brigid-identity"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=e8ecfb76b7da0b44c8758b378a91d08d6c37e88f#e8ecfb76b7da0b44c8758b378a91d08d6c37e88f"
+source = "git+https://github.com/brig-id/core?rev=f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04#f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04"
 dependencies = [
  "base64ct",
  "brigid-crypto",
@@ -471,7 +471,7 @@ dependencies = [
 [[package]]
 name = "brigid-oidc"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=e8ecfb76b7da0b44c8758b378a91d08d6c37e88f#e8ecfb76b7da0b44c8758b378a91d08d6c37e88f"
+source = "git+https://github.com/brig-id/core?rev=f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04#f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04"
 dependencies = [
  "base64ct",
  "brigid-identity",
@@ -492,7 +492,7 @@ dependencies = [
 [[package]]
 name = "brigid-server"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=e8ecfb76b7da0b44c8758b378a91d08d6c37e88f#e8ecfb76b7da0b44c8758b378a91d08d6c37e88f"
+source = "git+https://github.com/brig-id/core?rev=f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04#f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04"
 dependencies = [
  "axum",
  "axum-server",
@@ -520,7 +520,7 @@ dependencies = [
 [[package]]
 name = "brigid-store"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=e8ecfb76b7da0b44c8758b378a91d08d6c37e88f#e8ecfb76b7da0b44c8758b378a91d08d6c37e88f"
+source = "git+https://github.com/brig-id/core?rev=f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04#f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04"
 dependencies = [
  "base64ct",
  "brigid-crypto",
@@ -541,7 +541,7 @@ dependencies = [
 [[package]]
 name = "brigid-ui-embed"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=e8ecfb76b7da0b44c8758b378a91d08d6c37e88f#e8ecfb76b7da0b44c8758b378a91d08d6c37e88f"
+source = "git+https://github.com/brig-id/core?rev=f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04#f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04"
 dependencies = [
  "flate2",
 ]
@@ -549,7 +549,7 @@ dependencies = [
 [[package]]
 name = "brigid-webauthn"
 version = "0.1.0"
-source = "git+https://github.com/brig-id/core?rev=e8ecfb76b7da0b44c8758b378a91d08d6c37e88f#e8ecfb76b7da0b44c8758b378a91d08d6c37e88f"
+source = "git+https://github.com/brig-id/core?rev=f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04#f7bb06080dc28fb12c0f6aba5fcd2cd0f2f00d04"
 dependencies = [
  "brigid-crypto",
  "brigid-identity",
@@ -3020,7 +3020,6 @@ checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
  "aws-lc-rs",
  "once_cell",
- "ring",
  "rustls-pki-types",
  "rustls-webpki",
  "subtle",
@@ -3555,7 +3554,6 @@ dependencies = [
  "memchr",
  "once_cell",
  "percent-encoding",
- "rustls",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -3565,7 +3563,6 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "url",
- "webpki-roots 0.26.11",
 ]
 
 [[package]]
@@ -4561,24 +4558,6 @@ name = "webpki-root-certs"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "293198dcebfb821155b5092ab94b5a82ff180eddd7241df3bd6e66a4ffd1a585"
-dependencies = [
- "rustls-pki-types",
-]
-
-[[package]]
-name = "webpki-roots"
-version = "0.26.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "521bc38abb08001b01866da9f51eb7c5d647a19260e00054a8c7fd5f9e57f7a9"
-dependencies = [
- "webpki-roots 1.0.12",
-]
-
-[[package]]
-name = "webpki-roots"
-version = "1.0.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7265c9301c16a8711c992c2d8da90ee77ef54b1ed51482d6dfeb00dc756b1297"
 dependencies = [
  "rustls-pki-types",
 ]
