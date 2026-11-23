@@ -1,6 +1,6 @@
 [package]
 name = "seedling"
-version = "0.9.0"
+version = "0.10.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 publish = false
@@ -16,7 +16,7 @@ path = "src/lib.rs"
 [dependencies]
 # The server every edition runs, and the crates of brig·id it is made of
 # (git dependencies pointing to the core repository).
-brigid-server = { git = "https://github.com/brig-id/core", rev = "d53a47042b0c9e0b8934425be4a6a3fd8e8c76cb", package = "brigid-server" }
+brigid-server = { git = "https://github.com/brig-id/core", rev = "deb9fc47da940ed0c833a2515898698b2a6755c3", package = "brigid-server" }
 
 clap = { version = "4", features = ["derive", "env"] }
 tokio = { version = "1", features = ["full"] }
@@ -31,11 +31,11 @@ url = "2"
 openssl = { version = "0.10", features = ["vendored"] }
 
 [build-dependencies]
-brigid-ui-embed = { git = "https://github.com/brig-id/core", rev = "d53a47042b0c9e0b8934425be4a6a3fd8e8c76cb", package = "brigid-ui-embed" }
+brigid-ui-embed = { git = "https://github.com/brig-id/core", rev = "deb9fc47da940ed0c833a2515898698b2a6755c3", package = "brigid-ui-embed" }
 
 [dev-dependencies]
 # Re-open the database a test server wrote (tests/binary.rs).
-brigid-store = { git = "https://github.com/brig-id/core", rev = "d53a47042b0c9e0b8934425be4a6a3fd8e8c76cb", package = "brigid-store" }
+brigid-store = { git = "https://github.com/brig-id/core", rev = "deb9fc47da940ed0c833a2515898698b2a6755c3", package = "brigid-store" }
 brigid-crypto = { git = "https://github.com/brig-id/crypto", tag = "v0.1.0" }
 # The interface as the server serves it (tests/static_files.rs) and the JSON
 # the tests read.
