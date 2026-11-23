@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `/etc/brigid/master.key.cred`, writes no clear file, and prints the key once to
   keep offline; the unit uses `LoadCredentialEncrypted=`. `seedling seal-key
   [--from FILE]` seals an existing key and switches the unit. A command typed as
-  root unseals it (core#115).
+  root unseals it (core#115). When `systemd-creds` refuses (no TPM, no host
+  key), its own words are what `seal-key` says.
 - **Websites with no registration, from the administration** (core#114): an
   administrator chooses which websites that describe themselves are accepted,
   what they may ask for at most, and the accepted and refused lists (page
