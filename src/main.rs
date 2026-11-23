@@ -78,6 +78,15 @@ struct InitArgs {
     /// or its TPM is replaced. Needs `--systemd`.
     #[arg(long, requires = "systemd", conflicts_with = "no_key_file")]
     seal: bool,
+    /// The server obtains and renews its certificate itself (Let's
+    /// Encrypt), alone on port 443, with no proxy in front. The authority
+    /// must reach this machine on port 443 under `--domain`.
+    #[arg(long, conflicts_with = "port")]
+    acme: bool,
+    /// An e-mail address the certificate authority may write to (with
+    /// `--acme`): it warns there when a renewal keeps failing.
+    #[arg(long, requires = "acme")]
+    acme_contact: Option<String>,
 }
 
 /// Handles `seedling init`.
@@ -90,8 +99,18 @@ fn init_command(config: Option<&Path>, args: &InitArgs) {
         port,
         systemd,
         seal,
+        acme,
+        acme_contact,
     } = args;
-    let (no_key_file, port, systemd, seal) = (*no_key_file, *port, *systemd, *seal);
+    let (no_key_file, systemd, seal) = (*no_key_file, *systemd, *seal);
+    let listener = if *acme {
+        machine::Listener::Acme {
+            contact: acme_contact.clone(),
+        }
+    } else {
+        machine::Listener::BehindProxy { port: *port }
+    };
+    let port = listener.port();
     let executable = systemd.then(|| {
         std::env::current_exe()
             .and_then(std::fs::canonicalize)
@@ -103,7 +122,7 @@ fn init_command(config: Option<&Path>, args: &InitArgs) {
         key_file: key_file.to_owned(),
         create_key: !no_key_file,
         data_dir: data_dir.to_owned(),
-        port,
+        listener,
         systemd: executable,
         seal: seal.then(|| machine::Sealer {
             program: "systemd-creds".into(),
@@ -140,11 +159,19 @@ fn init_command(config: Option<&Path>, args: &InitArgs) {
             options.key_file.display()
         );
     }
-    eprintln!(
-        "\nThe server listens on 127.0.0.1:{port}. A reverse proxy holds the certificate of {domain} \
-         and forwards to it; or edit {} to give the server a certificate of its own.",
-        options.config.display()
-    );
+    match &options.listener {
+        machine::Listener::Acme { .. } => eprintln!(
+            "\nThe server listens on port 443 and obtains the certificate of {domain} itself, at its \
+             first start: the DNS record of {domain} must point to this machine, and port 443 must \
+             reach it from the Internet."
+        ),
+        machine::Listener::BehindProxy { .. } => eprintln!(
+            "\nThe server listens on 127.0.0.1:{port}. A reverse proxy holds the certificate of \
+             {domain} and forwards to it; or edit {} to let the server obtain one itself \
+             (`acme = true`) or give it one of its own.",
+            options.config.display()
+        ),
+    }
     if machine::port_in_use(port) {
         eprintln!(
             "\n⚠ Something on this machine already listens on port {port}: the server could not \
