@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-23
+
 ### Added
 
 - **The master key sealed by the machine** (#98): `seedling init --systemd --seal`
@@ -16,6 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   keep offline; the unit uses `LoadCredentialEncrypted=`. `seedling seal-key
   [--from FILE]` seals an existing key and switches the unit. A command typed as
   root unseals it (core#115).
+- **Websites with no registration, from the administration** (core#114): an
+  administrator chooses which websites that describe themselves are accepted,
+  what they may ask for at most, and the accepted and refused lists (page
+  **Websites**). On the machine: `seedling client limit --allow … | --all | --none`.
+- **The interface 0.10.0**: identities as cards in their own colour, renamed and
+  deleted from their own page; **Compare**, the identities side by side, with
+  the values two of them share; the administration as a place of its own.
+
+### Changed
+
+- One less library of cryptography in C in the binary (ring, core#116). `url`
+  2.5.9 (RUSTSEC-2026-0592).
 
 ## [0.8.0] - 2026-11-20
 
