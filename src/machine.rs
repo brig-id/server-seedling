@@ -292,19 +292,29 @@ pub fn seal_key(program: &Path, key_hex: &str, path: &Path) -> Result<(), InitEr
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| InitError::Seal(format!("cannot run {}: {e}", program.display())))?;
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(key_hex.trim().as_bytes())
-            .map_err(|e| InitError::Seal(e.to_string()))?;
-    }
+    // A program that fails at once (no TPM) ends before reading the key: the
+    // write then breaks, and what it said on stderr is the reason to give.
+    let written = child
+        .stdin
+        .take()
+        .map(|mut stdin| stdin.write_all(key_hex.trim().as_bytes()));
     let out = child
         .wait_with_output()
         .map_err(|e| InitError::Seal(e.to_string()))?;
+    let said = String::from_utf8_lossy(&out.stderr).trim().to_owned();
     if !out.status.success() || !path.exists() {
         let _ = fs::remove_file(path);
-        return Err(InitError::Seal(
-            String::from_utf8_lossy(&out.stderr).trim().to_owned(),
-        ));
+        return Err(InitError::Seal(if said.is_empty() {
+            format!("{} ended with {}", program.display(), out.status)
+        } else {
+            said
+        }));
+    }
+    if let Some(Err(e)) = written {
+        let _ = fs::remove_file(path);
+        return Err(InitError::Seal(format!(
+            "the key could not be handed over: {e}"
+        )));
     }
     Ok(())
 }
