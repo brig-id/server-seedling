@@ -1,56 +1,73 @@
-# brig·id seedling — example configuration
+# brig·id seedling — every setting, with its default
 #
-# Copy this file to (for example) `seedling.toml` and adjust for your deployment,
-# then pass it explicitly on the command line: `seedling --config ./seedling.toml`.
-# The binary does NOT auto-discover a `seedling.toml` in the current directory —
-# without `--config`, configuration is read entirely from `BRIGID_*` environment
-# variables (the recommended path for container deployments, where TOML files
-# complicate secret management).
+# `seedling init` writes a configuration for one machine (docs/install.md); this
+# file lists everything a configuration may hold. The server reads the file
+# given with `--config` (`init --systemd` sets /etc/brigid/seedling.toml), then
+# `BRIGID_*` environment variables, which win: `BRIGID_SERVER__PORT=8443`,
+# `BRIGID_SECURITY__TRUST_FORWARDED_FOR=true`, …
 #
-# BRIGID_MASTER_KEY must always come from the environment — never put it here.
+# The master key is never here. The server takes the first of:
+# BRIGID_MASTER_KEY_FILE (systemd hands it so), BRIGID_MASTER_KEY,
+# /etc/brigid/master.key, /etc/brigid/master.key.cred sealed by this machine.
 
 [server]
-# Network interface to bind (default: all interfaces).
+# The domain people reach the server at. Passkeys and the identifiers sites
+# receive are bound to it: it cannot change later.
+domain = "id.example.org"
+# The address people use, when it is not https://<domain> on `port` (behind a
+# proxy, the server listens on 8080 and people use 443):
+# public_url = "https://id.example.org"
+
+# Where the server listens (defaults: all interfaces, 8080).
 host = "0.0.0.0"
-# TCP port (default: 8080). Use 443 for direct HTTPS without a reverse proxy.
 port = 8080
-# Public domain name — must match your TLS certificate CN / SAN.
-# This value is used as:
-#   - the WebAuthn Relying Party ID (passkey scope)
-#   - the OIDC issuer URL prefix
-domain = "example.com"
 
-# TLS certificate and private key (PEM format).
-# Omit both to run plain HTTP (recommended behind Caddy / nginx).
-# tls_cert = "/certs/cert.pem"
-# tls_key  = "/certs/key.pem"
+# The certificate, one of three ways:
+#
+# 1. Behind a reverse proxy that holds it (Caddy, nginx): nothing here, and
+#    `host = "127.0.0.1"`, `trust_forwarded_for = true` below.
+#
+# 2. The server obtains and renews it itself (ACME, TLS-ALPN-01), alone on
+#    port 443: the authority must reach it there under `domain`. The account
+#    and the certificate's key are kept in the database, encrypted.
+# acme = true
+# acme_contact = "you@example.org"   # the authority writes there when renewals fail
+# acme_directory = "https://acme-v02.api.letsencrypt.org/directory"   # the default
+# acme_ca = "/etc/brigid/acme-root.pem"   # only for an authority not publicly trusted
+#
+# 3. Certificate files you renew yourself:
+# tls_cert = "/etc/brigid/cert.pem"
+# tls_key = "/etc/brigid/key.pem"
+#
+# Without a proxy, the server speaks TLS 1.3 only.
 
-# Publicly reachable URL of this instance, including scheme. Set this when
-# `seedling` runs behind a TLS-terminating reverse proxy (e.g. Caddy on :443 →
-# seedling on :8080) so OIDC issuer / discovery URLs and WebAuthn origin checks
-# advertise the public endpoint rather than the internal bind address.
-# When omitted, the URL is derived from `host`, `port`, and whether `tls_cert`
-# / `tls_key` are set, which is only correct for direct deployments.
-# Override via env: `BRIGID_SERVER__PUBLIC_URL=https://example.com`.
-# public_url = "https://example.com"
+# An internal Prometheus listener (GET /metrics), on the same host. Never
+# publish it. Unset: none.
+# metrics_port = 9100
+
+# Development only: serve the interface from this directory instead of the
+# one built into the program.
+# ui_dist_dir = "../app/dist"
 
 [database]
-# Path to the SQLite database file. The directory must be writable.
-path = "/data/brigid.db"
+# The SQLite file (default: /data/brigid.db; `seedling init` puts it in
+# /var/lib/brigid). Its directory must be writable by the server.
+path = "/var/lib/brigid/brigid.db"
 
 [security]
-# ID token lifetime in seconds (default: 3600 = 1 hour).
-session_ttl_seconds = 3600
-# Allowed CORS origins. Leave empty to disable CORS headers.
-cors_origins = ["https://example.com"]
-# Rate-limit per client IP read from `X-Forwarded-For` rather than the TCP peer
-# address. Set to true behind a reverse proxy that overwrites this header
-# (Caddy does); otherwise every client shares one rate-limit bucket. Keep
-# false when clients reach seedling directly: they could forge the header.
-# Override via env: `BRIGID_SECURITY__TRUST_FORWARDED_FOR=true`.
+# An account session ends after this many seconds unused (default: 3600),
+# and this many seconds after the passkey ceremony that opened it, used or
+# not (default: 43200, 12 hours).
+# session_ttl_seconds = 3600
+# session_lifetime_seconds = 43200
+
+# Count each client by `X-Forwarded-For` rather than the connection's address.
+# True only behind a proxy that replaces that header (Caddy does; nginx with
+# `proxy_set_header X-Forwarded-For $remote_addr`): otherwise a client could
+# choose the address its attempts are counted as.
 trust_forwarded_for = false
+
 # How many days the log of administrative actions is kept (default: 365).
-# It names accounts by an identifier; older entries are deleted.
 # admin_log_retention_days = 365
 # How long a passkey ceremony covers administrative changes, in seconds
 # (default: 300). Past it, an administrator is asked for their passkey again.

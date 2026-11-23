@@ -18,7 +18,7 @@ issues, pull requests. No exceptions.
   `deploy/systemd/`), the interface embedded at compile time (`build.rs` calls
   `brigid-ui-embed`, `BRIGID_UI_DIST`; a release build fails without it)
 - Docker multi-stage build + distroless image
-- Docker Compose deploy setup (`deploy/`)
+- The systemd unit (`deploy/systemd/`) and a Compose file for development (`deploy/compose.dev.yaml`)
 - E2E smoke tests (`tests/e2e/`)
 
 This repository contains **no business logic**. All logic lives in `brig-id/core`.
@@ -32,13 +32,15 @@ TODOs, backlog ideas, and phase/release status for this repo are tracked as card
 
 - **`BRIGID_MASTER_KEY` must never appear in `seedling.toml`** — env var or separate secret file only.
 - **Refuse to start** if `MASTER_KEY` is absent or decodes to fewer than 32 bytes.
-- **TLS 1.3 minimum** — configured via rustls `ServerConfig`; no OpenSSL for TLS.
+- **TLS 1.3 only** on the built-in listener (ACME or certificate files) — rustls `ServerConfig`
+  in core's `brigid-server`; no OpenSSL for TLS.
   The build container installs `libssl-dev` for `webauthn-rs`'s attestation chain
   validator only (see `core/AGENTS.md` for the documented scope of that exception);
   attestation never touches the TLS stack.
 - **Distroless Docker image** (`gcr.io/distroless/cc-debian12`) — no shell, no package manager.
 - **Non-root user** — `USER nonroot:nonroot` in the final Docker stage.
-- **Read-only container filesystem** — `read_only: true` + tmpfs on `/tmp` in compose.yaml.
+- **Read-only container filesystem** — `read_only: true` + tmpfs on `/tmp` wherever the image
+  runs (`deploy/compose.dev.yaml` does).
 - **Docker secrets** for `BRIGID_MASTER_KEY` — never a plaintext value in compose files.
 - **Graceful shutdown** — handle `SIGTERM`/`SIGINT`; SQLite must not be left in a corrupt state.
 
@@ -49,8 +51,7 @@ TODOs, backlog ideas, and phase/release status for this repo are tracked as card
 host   = "0.0.0.0"
 port   = 8080
 domain = "example.com"   # RP ID (WebAuthn) + issuer (OIDC)
-tls_cert = "/certs/cert.pem"
-tls_key  = "/certs/key.pem"
+acme = true              # or tls_cert/tls_key, or neither behind a proxy
 metrics_port = 9100      # optional: internal Prometheus listener (GET /metrics)
 
 [database]
@@ -60,7 +61,6 @@ path = "/data/brigid.db"
 # BRIGID_MASTER_KEY comes from env — never here
 session_ttl_seconds = 3600        # account session: ends after this long unused
 session_lifetime_seconds = 43200  # ...and this long after sign-in in any case
-cors_origins = ["https://example.com"]
 ```
 
 ## Key crates
