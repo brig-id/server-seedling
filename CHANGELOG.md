@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **The certificate obtained by seedling itself** (#75, core#122): `seedling init --acme
+  [--acme-contact ADDRESS]` writes a configuration where the server listens alone on port 443,
+  obtains its certificate from Let's Encrypt at its first start, proving the domain on that
+  same port (TLS-ALPN-01), and renews it. The account and the certificate's key are kept in
+  the database, encrypted. In any configuration: `acme = true` (and `acme_directory`,
+  `acme_contact`, `acme_ca`). The install guide offers it first.
+
+### Changed
+
+- Without a proxy, the server speaks TLS 1.3 only, with certificate files too.
+
 ## [0.10.0] - 2026-11-23
 
 ### Added

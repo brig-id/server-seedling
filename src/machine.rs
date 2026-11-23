@@ -66,13 +66,34 @@ pub struct InitOptions {
     pub create_key: bool,
     /// The directory of the database.
     pub data_dir: PathBuf,
-    /// The local port the server listens on, behind a reverse proxy.
-    pub port: u16,
+    /// How the server listens: behind a proxy, or alone with its own
+    /// certificate.
+    pub listener: Listener,
     /// Also the systemd unit and the system user, with this executable.
     pub systemd: Option<PathBuf>,
     /// Seal the new key instead of writing it in clear: with this program
     /// (`systemd-creds`), at this path. Needs `systemd` and `create_key`.
     pub seal: Option<Sealer>,
+}
+
+/// How the server listens.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Listener {
+    /// On this machine only, at this port, behind a reverse proxy that holds
+    /// the certificate.
+    BehindProxy { port: u16 },
+    /// On port 443, alone, with a certificate it obtains itself (ACME).
+    Acme { contact: Option<String> },
+}
+
+impl Listener {
+    /// The port the server listens on.
+    pub fn port(&self) -> u16 {
+        match self {
+            Self::BehindProxy { port } => *port,
+            Self::Acme { .. } => 443,
+        }
+    }
 }
 
 /// How a key is sealed: the program (`systemd-creds`, or a stand-in in
@@ -179,18 +200,57 @@ pub fn config_text(o: &InitOptions) -> String {
     let _ = writeln!(s, "[server]");
     let _ = writeln!(s, "domain = {:?}", o.domain);
     let _ = writeln!(s, "public_url = {:?}", format!("https://{}", o.domain));
-    let _ = writeln!(
-        s,
-        "# Behind a reverse proxy that holds the certificate (Caddy, nginx): the"
-    );
-    let _ = writeln!(s, "# server listens on this machine only.");
-    let _ = writeln!(s, "host = \"127.0.0.1\"");
-    let _ = writeln!(s, "port = {}", o.port);
-    let _ = writeln!(s, "# Without a proxy, with a certificate of your own:");
-    let _ = writeln!(s, "# host = \"0.0.0.0\"");
-    let _ = writeln!(s, "# port = 443");
-    let _ = writeln!(s, "# tls_cert = \"/etc/brigid/cert.pem\"");
-    let _ = writeln!(s, "# tls_key = \"/etc/brigid/key.pem\"");
+    match &o.listener {
+        Listener::Acme { contact } => {
+            let _ = writeln!(
+                s,
+                "# Alone on port 443: the server obtains and renews its certificate itself"
+            );
+            let _ = writeln!(
+                s,
+                "# (Let's Encrypt), proving the domain on this port. It keeps the certificate"
+            );
+            let _ = writeln!(s, "# in the database, encrypted.");
+            let _ = writeln!(s, "host = \"0.0.0.0\"");
+            let _ = writeln!(s, "port = 443");
+            let _ = writeln!(s, "acme = true");
+            match contact {
+                Some(c) => {
+                    let _ = writeln!(s, "acme_contact = {c:?}");
+                }
+                None => {
+                    let _ = writeln!(
+                        s,
+                        "# An address the authority writes to when a renewal keeps failing:"
+                    );
+                    let _ = writeln!(s, "# acme_contact = \"you@example.org\"");
+                }
+            }
+        }
+        Listener::BehindProxy { port } => {
+            let _ = writeln!(
+                s,
+                "# Behind a reverse proxy that holds the certificate (Caddy, nginx): the"
+            );
+            let _ = writeln!(s, "# server listens on this machine only.");
+            let _ = writeln!(s, "host = \"127.0.0.1\"");
+            let _ = writeln!(s, "port = {port}");
+            let _ = writeln!(
+                s,
+                "# Without a proxy, alone on port 443: the server obtains its certificate"
+            );
+            let _ = writeln!(
+                s,
+                "# itself (Let's Encrypt; set trust_forwarded_for = false below too):"
+            );
+            let _ = writeln!(s, "# host = \"0.0.0.0\"");
+            let _ = writeln!(s, "# port = 443");
+            let _ = writeln!(s, "# acme = true");
+            let _ = writeln!(s, "# Or with a certificate of your own instead of acme:");
+            let _ = writeln!(s, "# tls_cert = \"/etc/brigid/cert.pem\"");
+            let _ = writeln!(s, "# tls_key = \"/etc/brigid/key.pem\"");
+        }
+    }
     s.push('\n');
     let _ = writeln!(s, "[database]");
     let _ = writeln!(
@@ -200,12 +260,24 @@ pub fn config_text(o: &InitOptions) -> String {
     );
     s.push('\n');
     let _ = writeln!(s, "[security]");
-    let _ = writeln!(
-        s,
-        "# Only the proxy reaches the server, and it sets X-Forwarded-For: rate limits"
-    );
-    let _ = writeln!(s, "# then count each client, not the proxy.");
-    let _ = writeln!(s, "trust_forwarded_for = true");
+    if matches!(o.listener, Listener::Acme { .. }) {
+        let _ = writeln!(
+            s,
+            "# Nothing in front sets X-Forwarded-For: a client could, to choose the address"
+        );
+        let _ = writeln!(
+            s,
+            "# its attempts are counted as. The connection's address is used."
+        );
+        let _ = writeln!(s, "trust_forwarded_for = false");
+    } else {
+        let _ = writeln!(
+            s,
+            "# Only the proxy reaches the server, and it sets X-Forwarded-For: rate limits"
+        );
+        let _ = writeln!(s, "# then count each client, not the proxy.");
+        let _ = writeln!(s, "trust_forwarded_for = true");
+    }
     s
 }
 
@@ -456,7 +528,7 @@ mod tests {
             key_file: dir.join("etc/master.key"),
             create_key: true,
             data_dir: dir.join("data"),
-            port: 8080,
+            listener: Listener::BehindProxy { port: 8080 },
             systemd: None,
             seal: None,
         }
@@ -512,6 +584,29 @@ mod tests {
             fs::read_to_string(options(other.path()).key_file).unwrap(),
             key
         );
+    }
+
+    #[test]
+    fn with_acme_the_server_listens_alone_on_443_and_obtains_its_certificate() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut o = options(dir.path());
+        o.listener = Listener::Acme {
+            contact: Some("ops@example.org".into()),
+        };
+        init(&o).unwrap();
+        let cfg = brigid_server::config::load(Some(&o.config)).unwrap();
+        assert!(cfg.server.acme);
+        assert_eq!(cfg.server.acme_contact.as_deref(), Some("ops@example.org"));
+        assert_eq!(cfg.server.host, "0.0.0.0");
+        assert_eq!(cfg.server.port, 443);
+        assert!(cfg.server.tls_cert.is_none());
+        // Nothing in front sets X-Forwarded-For.
+        assert!(!cfg.security.trust_forwarded_for);
+
+        // Behind a proxy (the default), ACME is offered in a comment only.
+        let behind = config_text(&options(dir.path()));
+        assert!(behind.contains("\n# acme = true\n"));
+        assert!(behind.contains("\ntrust_forwarded_for = true\n"));
     }
 
     #[test]
