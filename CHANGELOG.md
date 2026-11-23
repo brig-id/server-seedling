@@ -20,6 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Without a proxy, the server speaks TLS 1.3 only, with certificate files too.
+- `seedling.example.toml` lists every setting, the three ways to hold the certificate and
+  where the master key comes from.
+
+### Removed
+
+- `deploy/compose.yaml`, `Caddyfile`, `OPENBAO.md` and `load-secrets.sh`: the deployment of
+  helm.brig.id, which lives with helm now (it runs grove). seedling installs as one
+  executable (`docs/install.md`); the image remains for those who want it.
+- `security.cors_origins` (core): the interface is the server's own. A configuration that
+  still sets it starts as before.
 
 ## [0.10.0] - 2026-11-23
 
