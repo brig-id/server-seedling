@@ -10,9 +10,11 @@ You need:
 - **A domain name** for the server, such as `id.example.org`, whose DNS
   record points to that machine. It cannot change later: passkeys are tied to
   it.
-- **A certificate for that name**: from the reverse proxy you already run, or
-  from one you add (step 4), or files you give the server itself. A
-  certificate obtained by seedling itself is coming.
+- **A certificate for that name**, one of:
+  - **none to bring**: seedling obtains it itself from Let's Encrypt and renews
+    it. Port 443 of the machine must be free and reachable from the Internet;
+  - from the reverse proxy you already run, or one you add (step 4);
+  - files you give the server itself.
 
 Every command below is typed on that machine.
 
@@ -40,13 +42,27 @@ the `rm`.
 
 ## 2. Prepare the machine
 
+**Alone on the machine, with a certificate it obtains itself:**
+
+```sh
+sudo seedling init --domain id.example.org --systemd --acme --acme-contact you@example.org
+```
+
+The server listens on port 443 and, at its first start, asks Let's Encrypt
+for the certificate of `id.example.org`, proving the name on that same port.
+It renews it by itself and keeps it in the database, encrypted.
+`--acme-contact` is optional: Let's Encrypt writes there when a renewal keeps
+failing. Nothing else may use port 443 here (`ss -ltn` lists the ports in use).
+
+**Or behind a reverse proxy** that holds the certificate:
+
 ```sh
 sudo seedling init --domain id.example.org --systemd
 ```
 
 The server listens on this machine only, on port 8080; the proxy of step 4
-forwards to it. If something else uses 8080 here (`ss -ltn` lists the ports
-in use), choose another: `--port 8091`. `init` warns when the port is taken.
+forwards to it. If something else uses 8080 here, choose another:
+`--port 8091`. `init` warns when the port is taken.
 
 It writes, and never overwrites:
 
@@ -117,7 +133,14 @@ setup link of step 5. `seedling init` prints these same four commands.
 
 ## 4. The certificate and the proxy
 
-People reach the server at `https://id.example.org`. Whatever answers there
+**With `--acme`**, there is nothing to do here: a minute after the start, the
+server's log says `certificate obtained`
+(`sudo journalctl -u seedling -n 20 --no-pager`). If it says
+`could not obtain a certificate`, it says why, and tries again by itself; the
+usual causes are a DNS record that does not point to this machine yet, or port
+443 closed by a firewall. Go to the check at the end of this step.
+
+**Behind a proxy:** people reach the server at `https://id.example.org`. Whatever answers there
 holds the certificate and forwards every request to the server, on this
 machine, at the port of step 2. It must:
 
@@ -160,11 +183,16 @@ server {
 }
 ```
 
-**No proxy at all**: give the server the certificate itself. In
+**No proxy, with certificate files of your own**: in
 `/etc/brigid/seedling.toml`, set `host = "0.0.0.0"`, `port = 443`,
-`tls_cert` and `tls_key` (files the user `brigid` can read), and
-`trust_forwarded_for = false`: nothing in front sets the header, so a
-client could. Then `sudo systemctl restart seedling`.
+`tls_cert` and `tls_key` (files the user `brigid` can read; you renew them),
+and `trust_forwarded_for = false`: nothing in front sets the header, so a
+client could. Then `sudo systemctl restart seedling`. To switch to a
+certificate the server obtains itself instead, set `acme = true` in place of
+`tls_cert` and `tls_key`.
+
+Without a proxy, the server speaks TLS 1.3 only: every browser that can use a
+passkey does.
 
 Whichever you chose:
 
