@@ -16,7 +16,8 @@ use std::{
 };
 
 use common::{
-    TEST_MASTER_KEY, free_port, open_sign_up, seedling, seedling_bin, wait_until_listening,
+    TEST_MASTER_KEY, answer_discoverable, free_port, open_sign_up, seedling, seedling_bin,
+    wait_until_listening,
 };
 use serde_json::{Value, json};
 use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
@@ -290,13 +291,12 @@ async fn webauthn_register_and_login_round_trip_opens_a_session() {
     let server = start_seedling();
     let origin = url::Url::parse(&server.base_url).unwrap();
     let mut auth_client = WebauthnAuthenticator::new(SoftPasskey::new(true));
-    let username = "smoke-alice@localhost";
 
     // -- register/begin --
     let resp = server
         .client
         .post(format!("{}/auth/register/begin", server.base_url))
-        .json(&json!({ "username": username }))
+        .json(&json!({}))
         .send()
         .await
         .unwrap();
@@ -305,6 +305,7 @@ async fn webauthn_register_and_login_round_trip_opens_a_session() {
     let session_id = begin["session_id"].clone();
     let ccr: CreationChallengeResponse = serde_json::from_value(begin["challenge"].clone())
         .expect("challenge should deserialize as CreationChallengeResponse");
+    let account_id = ccr.public_key.user.id.to_vec();
 
     // -- perform the ceremony with a software passkey --
     let credential = auth_client
@@ -325,7 +326,7 @@ async fn webauthn_register_and_login_round_trip_opens_a_session() {
     let resp = server
         .client
         .post(format!("{}/auth/login/begin", server.base_url))
-        .json(&json!({ "username": username }))
+        .json(&json!({}))
         .send()
         .await
         .unwrap();
@@ -335,9 +336,8 @@ async fn webauthn_register_and_login_round_trip_opens_a_session() {
     let rcr: RequestChallengeResponse = serde_json::from_value(begin["challenge"].clone())
         .expect("challenge should deserialize as RequestChallengeResponse");
 
-    let assertion = auth_client
-        .do_authentication(origin, rcr)
-        .expect("software passkey authentication ceremony");
+    let assertion =
+        answer_discoverable(&mut auth_client, &origin, rcr, &credential.id, &account_id);
 
     // -- login/finish --
     let resp = server
@@ -373,18 +373,18 @@ async fn deleting_the_only_passkey_is_refused() {
     let server = start_seedling();
     let origin = url::Url::parse(&server.base_url).unwrap();
     let mut auth_client = WebauthnAuthenticator::new(SoftPasskey::new(true));
-    let username = "smoke-bob@localhost";
 
     let resp = server
         .client
         .post(format!("{}/auth/register/begin", server.base_url))
-        .json(&json!({ "username": username }))
+        .json(&json!({}))
         .send()
         .await
         .unwrap();
     let begin = json_body(resp).await;
     let ccr: CreationChallengeResponse =
         serde_json::from_value(begin["challenge"].clone()).unwrap();
+    let account_id = ccr.public_key.user.id.to_vec();
     let credential = auth_client
         .do_registration(origin.clone(), for_soft_passkey(ccr))
         .unwrap();
@@ -399,13 +399,14 @@ async fn deleting_the_only_passkey_is_refused() {
     let resp = server
         .client
         .post(format!("{}/auth/login/begin", server.base_url))
-        .json(&json!({ "username": username, }))
+        .json(&json!({}))
         .send()
         .await
         .unwrap();
     let begin = json_body(resp).await;
     let rcr: RequestChallengeResponse = serde_json::from_value(begin["challenge"].clone()).unwrap();
-    let assertion = auth_client.do_authentication(origin, rcr).unwrap();
+    let assertion =
+        answer_discoverable(&mut auth_client, &origin, rcr, &credential.id, &account_id);
     let resp = server
         .client
         .post(format!("{}/auth/login/finish", server.base_url))
@@ -464,7 +465,7 @@ async fn twenty_first_auth_request_returns_429() {
         last_status = server
             .client
             .post(format!("{}/auth/login/begin", server.base_url))
-            .json(&json!({ "username": "nobody@localhost", }))
+            .json(&json!({}))
             .send()
             .await
             .unwrap()
@@ -485,7 +486,7 @@ async fn hammer_login_begin(server: &TestServer, client_ip: &str, count: usize) 
             .client
             .post(format!("{}/auth/login/begin", server.base_url))
             .header("x-forwarded-for", client_ip)
-            .json(&json!({ "username": "nobody@localhost", }))
+            .json(&json!({}))
             .send()
             .await
             .unwrap()
@@ -605,7 +606,7 @@ async fn a_site_registered_from_the_command_line_signs_a_person_in() {
     let resp = server
         .client
         .post(format!("{base}/auth/register/begin"))
-        .json(&json!({ "username": "smoke-site@localhost" }))
+        .json(&json!({}))
         .send()
         .await
         .unwrap();
@@ -659,7 +660,7 @@ async fn a_site_registered_from_the_command_line_signs_a_person_in() {
             .client
             .post(format!("{base}/account/identities"))
             .header(reqwest::header::COOKIE, &cookie)
-            .json(&json!({ "template": "personal" }))
+            .json(&json!({ "name": "Personal", "logo": "icon:ph:user" }))
             .send()
             .await
             .unwrap(),
