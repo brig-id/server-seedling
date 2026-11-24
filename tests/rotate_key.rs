@@ -21,7 +21,8 @@ use std::{
 };
 
 use common::{
-    TEST_MASTER_KEY as OLD_KEY, free_port, open_sign_up, seedling_bin, wait_until_listening,
+    TEST_MASTER_KEY as OLD_KEY, answer_discoverable, free_port, open_sign_up, seedling_bin,
+    wait_until_listening,
 };
 use serde_json::json;
 use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
@@ -70,7 +71,6 @@ async fn rotate_key_cli_round_trip_login_works_with_new_key() {
     let port = free_port();
     let base_url = format!("http://localhost:{port}");
     let client = client_for(&base_url);
-    let username = "rotate-test-user@localhost";
 
     // -- Register a real user against a `seedling` running with the old key --
     // Anyone can create an account on it: who may sign up is not this
@@ -84,7 +84,7 @@ async fn rotate_key_cli_round_trip_login_works_with_new_key() {
 
     let resp = client
         .post(format!("{base_url}/auth/register/begin"))
-        .json(&json!({ "username": username }))
+        .json(&json!({}))
         .send()
         .await
         .unwrap();
@@ -92,6 +92,7 @@ async fn rotate_key_cli_round_trip_login_works_with_new_key() {
     let begin: serde_json::Value = resp.json().await.unwrap();
     let ccr: CreationChallengeResponse =
         serde_json::from_value(begin["challenge"].clone()).unwrap();
+    let account_id = ccr.public_key.user.id.to_vec();
     let credential = auth_client
         .do_registration(origin.clone(), for_soft_passkey(ccr))
         .unwrap();
@@ -119,9 +120,10 @@ async fn rotate_key_cli_round_trip_login_works_with_new_key() {
         .unwrap();
     assert_eq!(resp.status(), 200);
     for identity in [
-        json!({ "template": "personal" }),
+        json!({ "name": "Personal", "logo": "icon:ph:user" }),
         json!({
-            "template": "work",
+            "name": "Work",
+            "logo": "icon:ph:briefcase",
             "attributes": { "email": "ada@work.example", "given_name": "Ada" },
         }),
     ] {
@@ -135,8 +137,14 @@ async fn rotate_key_cli_round_trip_login_works_with_new_key() {
         assert_eq!(resp.status(), 201);
     }
 
-    let identities_before =
-        sign_in_and_list_identities(&client, &base_url, &mut auth_client, &origin, username).await;
+    let identities_before = sign_in_and_list_identities(
+        &client,
+        &base_url,
+        &mut auth_client,
+        &origin,
+        (&credential.id, &account_id),
+    )
+    .await;
 
     stop_seedling(child);
 
@@ -178,8 +186,14 @@ async fn rotate_key_cli_round_trip_login_works_with_new_key() {
     // now dead — reusing it here would race a stale pooled connection
     // against the just-restarted server instead of actually testing it.
     let client = client_for(&base_url);
-    let identities_after =
-        sign_in_and_list_identities(&client, &base_url, &mut auth_client, &origin, username).await;
+    let identities_after = sign_in_and_list_identities(
+        &client,
+        &base_url,
+        &mut auth_client,
+        &origin,
+        (&credential.id, &account_id),
+    )
+    .await;
     assert_eq!(
         identities_before, identities_after,
         "the account's identities read the same under the new key"
@@ -219,18 +233,18 @@ async fn sign_in_and_list_identities(
     base_url: &str,
     auth_client: &mut WebauthnAuthenticator<SoftPasskey>,
     origin: &url::Url,
-    username: &str,
+    (credential_id, account_id): (&str, &[u8]),
 ) -> Vec<(String, String)> {
     let resp = client
         .post(format!("{base_url}/auth/login/begin"))
-        .json(&json!({ "username": username }))
+        .json(&json!({}))
         .send()
         .await
         .unwrap();
-    assert_eq!(resp.status(), 200, "login/begin should find the user");
+    assert_eq!(resp.status(), 200, "login/begin should succeed");
     let begin: serde_json::Value = resp.json().await.unwrap();
     let rcr: RequestChallengeResponse = serde_json::from_value(begin["challenge"].clone()).unwrap();
-    let assertion = auth_client.do_authentication(origin.clone(), rcr).unwrap();
+    let assertion = answer_discoverable(auth_client, origin, rcr, credential_id, account_id);
     let resp = client
         .post(format!("{base_url}/auth/login/finish"))
         .json(&json!({ "session_id": begin["session_id"], "credential": assertion }))

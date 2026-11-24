@@ -67,3 +67,33 @@ pub fn wait_until_listening(addr: SocketAddr, timeout: Duration) -> bool {
     }
     false
 }
+
+/// The answer of a discoverable passkey to a sign-in challenge, which names
+/// no credential (the only kind the server asks). `SoftPasskey` keeps no
+/// resident key: the test names the credential for it (`credential_id`, the
+/// registration's `id`), and gives the answer the user handle a real
+/// authenticator returns, the account id (the registration's `user.id`).
+#[allow(dead_code)]
+pub fn answer_discoverable(
+    passkey: &mut webauthn_authenticator_rs::WebauthnAuthenticator<
+        webauthn_authenticator_rs::softpasskey::SoftPasskey,
+    >,
+    origin: &url::Url,
+    mut challenge: webauthn_rs::prelude::RequestChallengeResponse,
+    credential_id: &str,
+    account_id: &[u8],
+) -> webauthn_rs::prelude::PublicKeyCredential {
+    assert!(
+        challenge.public_key.allow_credentials.is_empty(),
+        "a sign-in challenge names no credential"
+    );
+    challenge.public_key.allow_credentials =
+        serde_json::from_value(serde_json::json!([{ "type": "public-key", "id": credential_id }]))
+            .unwrap();
+    challenge.mediation = None;
+    let mut answer = passkey
+        .do_authentication(origin.clone(), challenge)
+        .expect("software passkey authentication ceremony");
+    answer.response.user_handle = Some(account_id.to_vec().into());
+    answer
+}
