@@ -1,5 +1,10 @@
 # Installing seedling
 
+<!-- Every code block of this guide is marked, on the line before it, for
+tests/install_guide.rs and the guide job of CI, which follows the guide on
+a fresh machine: `run` (in order, as a shell script), `file: <path>` (written
+there), or `not run: <why>`. -->
+
 From a machine of your own to a person signed in on a website, with brig·id
 as the way in. About half an hour.
 
@@ -24,6 +29,7 @@ This downloads the latest release for your machine's architecture, checks
 it against the sums published with it, installs it, and leaves nothing
 behind:
 
+<!-- run -->
 ```sh
 URL=https://github.com/brig-id/server-seedling/releases/latest/download
 FILE=seedling-linux-$(uname -m)
@@ -44,6 +50,7 @@ the `rm`.
 
 **Alone on the machine, with a certificate it obtains itself:**
 
+<!-- not run: Let's Encrypt must reach the machine under a public name; the server's ACME is tested in brig-id/core, against Pebble -->
 ```sh
 sudo seedling init --domain id.example.org --systemd --acme --acme-contact you@example.org
 ```
@@ -56,6 +63,7 @@ failing. Nothing else may use port 443 here (`ss -ltn` lists the ports in use).
 
 **Or behind a reverse proxy** that holds the certificate:
 
+<!-- run -->
 ```sh
 sudo seedling init --domain id.example.org --systemd
 ```
@@ -86,6 +94,7 @@ disk. For the second, keep the key on another disk:
 mini PCs from the last years; `systemd-analyze has-tpm2` says `yes`), the key
 can be sealed instead of written in clear:
 
+<!-- not run: the other way to start, above; sealing is run below, with seal-key -->
 ```sh
 sudo seedling init --domain id.example.org --systemd --seal
 ```
@@ -105,22 +114,15 @@ TPM is replaced.
 
 None of them protects against someone who is root on the running machine.
 
-A server installed with a clear key seals it afterwards, the server running:
-
-```sh
-sudo seedling seal-key            # seals /etc/brigid/master.key, switches the unit
-sudo systemctl daemon-reload && sudo systemctl restart seedling
-sudo journalctl -u seedling -n 20 --no-pager
-sudo shred -u /etc/brigid/master.key   # once it runs, and the key is kept offline
-```
-
-On a new machine, from the offline copy: `sudo seedling seal-key --from <file>`.
+A server installed with a clear key can seal it later, once it runs:
+[Sealing the key afterwards](#sealing-the-key-afterwards).
 
 **Keep a copy of the key somewhere else, offline.** Without it the database
 cannot be read, by anyone, you included.
 
 ## 3. Start it
 
+<!-- run -->
 ```sh
 sudo systemd-sysusers
 sudo systemctl daemon-reload
@@ -158,14 +160,23 @@ properties. Two examples:
 **Caddy**, which also obtains and renews the certificate by itself, in
 `/etc/caddy/Caddyfile` (Caddy replaces `X-Forwarded-For` by default):
 
+<!-- file: /etc/caddy/Caddyfile -->
 ```
 id.example.org {
 	reverse_proxy 127.0.0.1:8080
 }
 ```
 
+Then Caddy reads it again:
+
+<!-- run -->
+```sh
+sudo systemctl reload caddy
+```
+
 **nginx**, with a certificate you already have:
 
+<!-- not run: the proxy run here is Caddy, above -->
 ```
 server {
     listen 443 ssl;
@@ -183,6 +194,8 @@ server {
 }
 ```
 
+Then `sudo systemctl reload nginx`.
+
 **No proxy, with certificate files of your own**: in
 `/etc/brigid/seedling.toml`, set `host = "0.0.0.0"`, `port = 443`,
 `tls_cert` and `tls_key` (files the user `brigid` can read; you renew them),
@@ -196,6 +209,7 @@ passkey does.
 
 Whichever you chose:
 
+<!-- run -->
 ```sh
 curl -fsS https://id.example.org/health
 ```
@@ -206,6 +220,7 @@ A new server has no account. At each start it writes a one-time link that
 creates the first one, which administers the server. It is in what step 3
 showed; again:
 
+<!-- run -->
 ```sh
 sudo journalctl -u seedling -n 20 --no-pager
 ```
@@ -215,6 +230,7 @@ hour: the last one, if it shows several (each start makes a new one and
 cancels the one before). Expired, or not there? This
 prints a new one, with no restart (the earlier one stops working):
 
+<!-- run -->
 ```sh
 sudo seedling admin link
 ```
@@ -232,6 +248,7 @@ A new server takes accounts **by invitation**: make invitation links in
 **Administration → Sign-up**. To let anyone create an account, choose
 "Anyone" there, or on the machine:
 
+<!-- run -->
 ```sh
 sudo seedling signup open
 ```
@@ -245,6 +262,7 @@ as its `client_id`: your server reads it and signs your people in to that
 website, with no registration and no secret to hand over. The person sees the
 website's domain and decides. Which of those websites your server accepts:
 
+<!-- run -->
 ```sh
 sudo seedling client policy              # what it is now: open, unless you changed it
 sudo seedling client policy open         # any, except the ones you refuse (the default)
@@ -261,6 +279,7 @@ website is shown by its domain and the name it declares.
 **A website of your own, or one under development on your machine**, can be
 registered instead, in **Administration → Applications**, or on the machine:
 
+<!-- run -->
 ```sh
 sudo seedling client add --name "Field Notes" --redirect-uri https://notes.example.org/callback --required email --optional given_name
 ```
@@ -295,6 +314,7 @@ signed in.
 The same download as step 1, then a restart. The database is upgraded in
 place at start; the configuration, the key and the service are kept:
 
+<!-- run -->
 ```sh
 URL=https://github.com/brig-id/server-seedling/releases/latest/download
 FILE=seedling-linux-$(uname -m)
@@ -311,8 +331,24 @@ What changed in each release:
 [the releases page](https://github.com/brig-id/server-seedling/releases).
 The **About** page of the server says which version runs.
 
+## Sealing the key afterwards
+
+A server installed with a clear key seals it with the machine, the server
+running:
+
+<!-- run -->
+```sh
+sudo seedling seal-key            # seals /etc/brigid/master.key, switches the unit
+sudo systemctl daemon-reload && sudo systemctl restart seedling
+sudo journalctl -u seedling -n 20 --no-pager
+sudo shred -u /etc/brigid/master.key   # once it runs, and the key is kept offline
+```
+
+On a new machine, from the offline copy: `sudo seedling seal-key --from <file>`.
+
 ## Day to day
 
+<!-- run -->
 ```sh
 sudo seedling --version                 # what runs
 sudo seedling client list               # the applications: registered, and those that describe themselves
