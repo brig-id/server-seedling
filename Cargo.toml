@@ -36,7 +36,7 @@ brigid-ui-embed = { git = "https://github.com/brig-id/core", tag = "v0.2.0", pac
 [dev-dependencies]
 # Re-open the database a test server wrote (tests/binary.rs).
 brigid-store = { git = "https://github.com/brig-id/core", tag = "v0.2.0", package = "brigid-store" }
-brigid-crypto = { git = "https://github.com/brig-id/crypto", tag = "v0.1.0" }
+brigid-crypto = { git = "https://github.com/brig-id/crypto", tag = "v0.2.0" }
 # The interface as the server serves it (tests/static_files.rs) and the JSON
 # the tests read.
 axum = "0.8"

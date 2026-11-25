@@ -482,12 +482,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "brigid-crypto"
+version = "0.2.0"
+source = "git+https://github.com/brig-id/crypto?tag=v0.2.0#0f78de89cba0b302b6d5c7bfb328226c3bf1bdf8"
+dependencies = [
+ "aes-gcm",
+ "ed25519-dalek",
+ "getrandom 0.4.3",
+ "helpers4",
+ "hkdf",
+ "ml-dsa",
+ "rand_core 0.10.1",
+ "secrecy",
+ "sha2",
+ "sha3 0.11.0",
+ "thiserror 2.0.21",
+ "x-wing",
+ "zeroize",
+]
+
+[[package]]
 name = "brigid-identity"
 version = "0.2.0"
 source = "git+https://github.com/brig-id/core?tag=v0.2.0#e76712b7a8ca60f53fc50ab43eea4b2398386775"
 dependencies = [
  "base64ct",
- "brigid-crypto",
+ "brigid-crypto 0.0.1",
  "helpers4",
  "hkdf",
  "serde",
@@ -526,7 +546,7 @@ dependencies = [
  "axum",
  "axum-server",
  "brigid-api",
- "brigid-crypto",
+ "brigid-crypto 0.0.1",
  "brigid-identity",
  "brigid-oidc",
  "brigid-store",
@@ -555,7 +575,7 @@ version = "0.2.0"
 source = "git+https://github.com/brig-id/core?tag=v0.2.0#e76712b7a8ca60f53fc50ab43eea4b2398386775"
 dependencies = [
  "base64ct",
- "brigid-crypto",
+ "brigid-crypto 0.0.1",
  "brigid-identity",
  "helpers4",
  "serde",
@@ -583,7 +603,7 @@ name = "brigid-webauthn"
 version = "0.2.0"
 source = "git+https://github.com/brig-id/core?tag=v0.2.0#e76712b7a8ca60f53fc50ab43eea4b2398386775"
 dependencies = [
- "brigid-crypto",
+ "brigid-crypto 0.0.1",
  "brigid-identity",
  "brigid-store",
  "serde",
@@ -3063,7 +3083,7 @@ version = "0.11.0"
 dependencies = [
  "axum",
  "base64ct",
- "brigid-crypto",
+ "brigid-crypto 0.2.0",
  "brigid-server",
  "brigid-store",
  "brigid-ui-embed",
@@ -4594,6 +4614,20 @@ name = "writeable"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
+
+[[package]]
+name = "x-wing"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01576e56599d01d75c5efcd5b30fa5de29e776f5a225e43fbf8c92c7302d4c8b"
+dependencies = [
+ "kem",
+ "ml-kem",
+ "sha3 0.12.0",
+ "shake",
+ "x25519-dalek",
+ "zeroize",
+]
 
 [[package]]
 name = "x25519-dalek"
