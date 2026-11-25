@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-25
+
 ### Added
 
 - **The certificate obtained by seedling itself** (#75, core#122): `seedling init --acme
@@ -19,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Core at c2ad77d (sqlx 0.9; every query of the store is fixed at compile time) and the
+  interface at app main (9ee1110: the archetypes are the interface's).
 - Without a proxy, the server speaks TLS 1.3 only, with certificate files too.
 - `seedling.example.toml` lists every setting, the three ways to hold the certificate and
   where the master key comes from.
