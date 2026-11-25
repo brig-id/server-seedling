@@ -99,6 +99,7 @@ Format: `type(scope): <emoji> description`
 | `docker` | `Dockerfile`, `deploy/` |
 | `ci` | `.github/workflows/` |
 | `deps` | Dependency bumps |
+| `release` | A release pull request (release-please) |
 
 **Do not use a scope outside this list.** If a new source file or concern is added,
 update this table and `.vscode/settings.json`.
@@ -107,8 +108,26 @@ update this table and `.vscode/settings.json`.
 feat(seedling): ✨ serve Qwik static assets from ui/dist/
 fix(config): 🐛 reject partial TLS config at startup
 ci(ci): 👷 add conventional commit check
-chore(deps): 📦 bump brigid-api to latest core rev
+feat(deps): ✨ bring in brig-id/core to v0.3.0
 ```
+
+## Releases
+
+Nobody tags by hand and nobody writes the changelog. `.github/workflows/release.yml`
+(release-please, through the shared workflow of brig-id/.github) keeps a release pull
+request up to date: the next version and its `CHANGELOG.md` entry, from the commits
+since the last release. **Merging that pull request is the release**: release-please
+creates the tag `vX.Y.Z` and the GitHub Release, then starts `ci.yml` on the tag, whose
+tag-only jobs add the static binaries and push `ghcr.io/brig-id/seedling`. So:
+
+- the core, crypto and the interface are pinned by tag (`tag = "vX.Y.Z"`, and `APP_REF`
+  with its tag beside it); Renovate proposes their new releases in one pull request,
+  `feat(deps)` or `fix(deps)`, and merging it is what opens the next release here;
+- the commit type decides the version: `feat` is a minor, `fix` a patch, a `!` or a
+  `BREAKING CHANGE:` footer a minor too while the version is 0.x;
+- the commit subject is the changelog line: write it for someone reading the release;
+- do not edit `CHANGELOG.md`, `.release-please-manifest.json` or the version in
+  `Cargo.toml` by hand.
 
 ## Commands
 
