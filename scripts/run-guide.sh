@@ -50,8 +50,14 @@ localhost {
 }
 EOF
 sudo systemctl restart caddy
-root=/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt
-for _ in $(seq 1 30); do sudo test -f "$root" && break; sleep 1; done
+# (Where Caddy keeps it depends on how it was packaged.)
+root=""
+for _ in $(seq 1 30); do
+  root=$(sudo find /var/lib/caddy /root /etc/caddy -path '*/pki/authorities/local/root.crt' -print -quit 2> /dev/null || true)
+  [ -n "$root" ] && break
+  sleep 1
+done
+test -n "$root" || { echo "Caddy made no local authority"; exit 1; }
 sudo cp "$root" /usr/local/share/ca-certificates/caddy-local.crt
 sudo update-ca-certificates > /dev/null
 echo "::endgroup::"
@@ -112,12 +118,12 @@ echo "✓ https://$domain/health answers"
 sudo test -f /etc/brigid/master.key.cred
 sudo test ! -e /etc/brigid/master.key
 echo "✓ the key is sealed, and the clear one gone"
-sudo journalctl -u seedling --no-pager | grep -qF "https://$domain/setup/#link="
+sudo journalctl -u seedling --no-pager | grep -F "https://$domain/setup/#link=" > /dev/null
 grep -qF "https://$domain/setup/#link=" "$work/guide.log"
 echo "✓ the setup link of the first administrator is printed, at start and by admin link"
 curl -fsS "https://$domain/auth/server" | jq -e '.policy == "open"' > /dev/null
 echo "✓ anyone may sign up"
-sudo seedling client list | grep -q "Field Notes"
+sudo seedling client list | grep "Field Notes" > /dev/null
 client_id=$(sed -n 's/^client_id=//p' "$work/guide.log" | tail -n 1)
 client_secret=$(sed -n 's/^client_secret=//p' "$work/guide.log" | tail -n 1)
 test -n "$client_id" && test -n "$client_secret"
