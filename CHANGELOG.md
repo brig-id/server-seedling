@@ -8,6 +8,13 @@ of the Conventional Commits of the release; the entries up to 0.11.0 were writte
 the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. This project adheres
 to [Semantic Versioning](https://semver.org/).
 
+## [0.12.0](https://github.com/brig-id/server-seedling/compare/v0.11.0...v0.12.0) (2026-11-25)
+
+
+### Features
+
+* **deps:** ✨ bring in core v0.3.0, crypto v0.2.0 and the interface v0.11.1 ([78769da](https://github.com/brig-id/server-seedling/commit/78769da50695aa53272cf6aa0b4e9ae9bc1f2c6d))
+
 ## [0.11.0] - 2026-11-25
 
 ### Added
