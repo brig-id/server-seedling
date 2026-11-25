@@ -385,3 +385,83 @@ jobs:
           tags: |
             ghcr.io/brig-id/seedling:${{ github.ref_name }}
             ghcr.io/brig-id/seedling:latest
+
+  # -- The installation guide, followed on a fresh machine ------------------
+
+  guide-tests:
+    # The checks of the guide job, built once beside the binaries: the guide
+    # as a script, and the sign-in on the installed server
+    # (tests/install_guide.rs).
+    name: Guide checks (build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout server-seedling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master @ 2026-08-05
+        with:
+          toolchain: stable
+
+      - name: Cache cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-guide-tests-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-guide-tests-
+
+      - name: Build
+        run: |
+          exe=$(cargo test --locked --no-run --test install_guide --message-format=json \
+            | jq -r 'select(.reason == "compiler-artifact" and .target.name == "install_guide" and .profile.test) | .executable')
+          test -x "$exe"
+          mkdir -p out
+          cp "$exe" out/install_guide
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: install-guide-tests
+          path: out/install_guide
+          if-no-files-found: error
+
+  guide:
+    # docs/install.md from start to end, on the runner itself (Ubuntu, with
+    # systemd and sudo): every block it marks `run`, in order, then what it
+    # promises, up to a person signed in on the site it registered
+    # (scripts/run-guide.sh). The download is this build's binary, served on
+    # the machine with its SHA256SUMS; on a tag, the release just published.
+    name: Installation guide, followed on a fresh machine
+    needs: [binaries, guide-tests, release]
+    if: ${{ !cancelled() && needs.binaries.result == 'success' && needs.guide-tests.result == 'success' && needs.release.result != 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout server-seedling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: The binary
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: seedling-amd64
+          path: artifacts/binary
+
+      - name: The checks
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: install-guide-tests
+          path: artifacts/tests
+
+      - name: Follow docs/install.md
+        run: |
+          chmod +x artifacts/tests/install_guide
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            scripts/run-guide.sh artifacts/tests/install_guide
+          else
+            scripts/run-guide.sh artifacts/tests/install_guide artifacts/binary/seedling
+          fi
