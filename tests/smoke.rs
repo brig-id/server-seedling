@@ -16,8 +16,8 @@ use std::{
 };
 
 use common::{
-    TEST_MASTER_KEY, answer_discoverable, free_port, open_sign_up, seedling, seedling_bin,
-    wait_until_listening,
+    TEST_MASTER_KEY, answer_discoverable, for_soft_passkey, free_port, open_sign_up, seedling,
+    seedling_bin, wait_until_listening,
 };
 use serde_json::{Value, json};
 use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
@@ -510,24 +510,6 @@ async fn without_a_trusted_proxy_forwarded_for_does_not_split_the_rate_limit() {
     assert_eq!(hammer_login_begin(&server, "203.0.113.1", 21).await, 429);
     // The header is ignored: forging it must not buy a fresh bucket.
     assert_eq!(hammer_login_begin(&server, "203.0.113.2", 1).await, 429);
-}
-
-/// The server asks for a discoverable passkey (`residentKey: required`);
-/// `SoftPasskey` keeps no resident keys and would refuse. Check the request,
-/// then relax it for the software authenticator.
-fn for_soft_passkey(mut ccr: CreationChallengeResponse) -> CreationChallengeResponse {
-    let selection = ccr
-        .public_key
-        .authenticator_selection
-        .as_mut()
-        .expect("registration states an authenticator selection");
-    assert!(
-        selection.require_resident_key,
-        "discoverable passkey requested"
-    );
-    selection.resident_key = Some(webauthn_rs_proto::ResidentKeyRequirement::Discouraged);
-    selection.require_resident_key = false;
-    ccr
 }
 
 // ---------------------------------------------------------------------------

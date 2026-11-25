@@ -97,3 +97,24 @@ pub fn answer_discoverable(
     answer.response.user_handle = Some(account_id.to_vec().into());
     answer
 }
+
+/// The server asks for a discoverable passkey (`residentKey: required`);
+/// `SoftPasskey` keeps no resident keys and would refuse. Check the request,
+/// then relax it for the software authenticator.
+#[allow(dead_code)]
+pub fn for_soft_passkey(
+    mut ccr: webauthn_rs::prelude::CreationChallengeResponse,
+) -> webauthn_rs::prelude::CreationChallengeResponse {
+    let selection = ccr
+        .public_key
+        .authenticator_selection
+        .as_mut()
+        .expect("registration states an authenticator selection");
+    assert!(
+        selection.require_resident_key,
+        "discoverable passkey requested"
+    );
+    selection.resident_key = Some(webauthn_rs_proto::ResidentKeyRequirement::Discouraged);
+    selection.require_resident_key = false;
+    ccr
+}
