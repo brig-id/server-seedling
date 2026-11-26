@@ -356,49 +356,9 @@ sudo seedling admin link                # a new setup link; or, once accounts ex
 sudo journalctl -u seedling -f          # what it says
 ```
 
-**Back up**, with the server running:
-
-<!-- run -->
-```sh
-sudo seedling backup /var/backups/brigid-$(date -u +%F).db
-```
-
-It writes a copy of the database that is whole even while the server writes,
-checks it, and prints its path. The file is readable by root only, and never
-written over: name a new one each time. The copy is encrypted with the master
-key, like the database. Keep the key too, apart from the backups: one without
-the other restores nothing.
-
-**Restore** a backup, the server stopped:
-
-<!-- run -->
-```sh
-sudo systemctl stop seedling
-sudo seedling restore /var/backups/brigid-2026-11-26.db   # the backup to put back
-sudo systemctl start seedling
-sudo journalctl -u seedling -n 20 --no-pager
-```
-
-`restore` refuses, and changes nothing, while the server runs, when the master
-key does not open the backup, when its accounts belong to another domain, or
-when it comes from a newer version of seedling. Otherwise it keeps the
-database it replaces beside it, as
-`/var/lib/brigid/brigid.db.before-restore-<time>` (UTC), and prints that
-path. The server is then as it was at the backup: accounts, passkeys,
-identities and websites created since are not in it.
-
-**Limits**: how many identities and passkeys one account may have, and how
-many accounts one address may create in a day:
-
-<!-- run -->
-```sh
-sudo seedling limits                                  # name, value, default, maximum
-sudo seedling limits set identities_per_account 30    # from 1 to the maximum
-```
-
-A change applies at once, the server running or not. An administrator sets
-the same in **Administration**. What each limit counts, and more on backups:
-[backups and limits](https://github.com/brig-id/core/blob/main/docs/operations.md).
+**Back up**: `/var/lib/brigid/brigid.db`, with the server running
+(`sudo sqlite3 /var/lib/brigid/brigid.db ".backup /somewhere/brigid.db"`),
+and the master key, kept apart from it.
 
 A command typed as root on the machine reads the key, then works as the user
 `brigid`: the database never gets a file root owns. The server itself refuses
