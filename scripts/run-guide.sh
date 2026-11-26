@@ -95,6 +95,9 @@ fi
 replace "$domain {" $'{\n\tlocal_certs\n}\n'"$domain {"
 # A person waits a few seconds after a start; a script, not.
 replace "curl -fsS https://" "curl -fsS --retry 20 --retry-delay 1 --retry-all-errors https://"
+# The backup the guide made a moment ago, not the one of its example.
+replace "sudo seedling restore /var/backups/brigid-2026-11-26.db" \
+  "sudo seedling restore /var/backups/brigid-\$(date -u +%F).db"
 # Followed for a few seconds, then stopped as a person would.
 replace "sudo journalctl -u seedling -f " "{ timeout 5 sudo journalctl -u seedling -f || test \$? = 124; } "
 
@@ -124,6 +127,19 @@ echo "✓ the setup link of the first administrator is printed, at start and by 
 curl -fsS "https://$domain/auth/server" | jq -e '.policy == "open"' > /dev/null
 echo "✓ anyone may sign up"
 sudo seedling client list | grep "Field Notes" > /dev/null
+backup=$(sed -n 's|^\(/var/backups/brigid-[0-9-]*\.db\)$|\1|p' "$work/guide.log" | tail -n 1)
+test -n "$backup"
+test "$(sudo stat -c '%a %U' "$backup")" = "600 root"
+echo "✓ the backup is $backup, readable by root only"
+sudo sh -c 'ls /var/lib/brigid/brigid.db.before-restore-*' > /dev/null
+# What the day-to-day block listed before the backup, and the restored
+# server lists now: the same.
+listed=$(awk '/^\+ sudo seedling client list$/ { on = 1; next } /^\+ / { on = 0 } on' "$work/guide.log")
+test -n "$listed"
+test "$(sudo seedling client list 2>&1)" = "$listed"
+echo "✓ restored, the server is back with its data; the one it replaced is kept"
+sudo seedling limits | grep -P "^identities_per_account\t30\t" > /dev/null
+echo "✓ the limits are read and set"
 client_id=$(sed -n 's/^client_id=//p' "$work/guide.log" | tail -n 1)
 client_secret=$(sed -n 's/^client_secret=//p' "$work/guide.log" | tail -n 1)
 test -n "$client_id" && test -n "$client_secret"
