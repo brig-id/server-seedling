@@ -120,12 +120,14 @@ fn script(guide: &str) -> String {
 }
 
 /// The words of a command line as a shell splits them: spaces separate,
-/// double quotes keep a phrase together, `#` starts a comment.
+/// double quotes and `$(…)` keep a phrase together, `#` starts a comment.
 fn words(line: &str) -> Vec<String> {
     let mut words = Vec::new();
     let mut word = String::new();
     let mut quoted = false;
     let mut started = false;
+    // How deep in `$(…)`.
+    let mut substituted = 0usize;
     for c in line.chars() {
         match c {
             '"' => {
@@ -133,7 +135,15 @@ fn words(line: &str) -> Vec<String> {
                 started = true;
             }
             '#' if !quoted && !started => break,
-            c if c.is_whitespace() && !quoted => {
+            '(' if word.ends_with('$') => {
+                substituted += 1;
+                word.push(c);
+            }
+            ')' if substituted > 0 => {
+                substituted -= 1;
+                word.push(c);
+            }
+            c if c.is_whitespace() && !quoted && substituted == 0 => {
                 if started {
                     words.push(std::mem::take(&mut word));
                     started = false;
@@ -198,6 +208,10 @@ fn the_shell_is_split_as_a_shell_would() {
         ]
     );
     assert_eq!(words("seedling --version"), ["seedling", "--version"]);
+    assert_eq!(
+        words("seedling backup /b/brigid-$(date -u +%F).db"),
+        ["seedling", "backup", "/b/brigid-$(date -u +%F).db"]
+    );
 }
 
 #[test]
@@ -266,6 +280,9 @@ fn every_block_of_the_guide_is_run_or_excused() {
         "sudo seedling signup open",
         "sudo seedling client add ",
         "sudo systemctl restart seedling",
+        "sudo seedling backup ",
+        "sudo systemctl stop seedling\nsudo seedling restore ",
+        "sudo seedling limits set ",
     ] {
         assert!(script.contains(step), "the guide does not run `{step}`");
     }
