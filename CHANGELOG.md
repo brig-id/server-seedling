@@ -8,6 +8,13 @@ of the Conventional Commits of the release; the entries up to 0.11.0 were writte
 the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. This project adheres
 to [Semantic Versioning](https://semver.org/).
 
+## [0.12.2](https://github.com/brig-id/server-seedling/compare/v0.12.1...v0.12.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **deps:** 📦 core v0.3.1: backup, restore and limits ([a205b24](https://github.com/brig-id/server-seedling/commit/a205b24d63422284561058d939748c0b1fc9a4b6))
+
 ## [0.12.1](https://github.com/brig-id/server-seedling/compare/v0.12.0...v0.12.1) (2026-11-26)
 
 
