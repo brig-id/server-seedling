@@ -26,13 +26,6 @@ tokio = { version = "1", features = ["full"] }
 # `seedling init` checks the domain it is given (src/machine.rs).
 url = "2"
 
-# A static (musl) build carries its own OpenSSL: the system's is not there to
-# link to. OpenSSL is reached only by the attestation code of webauthn-rs,
-# which brig·id never runs (attestation "none"); the linked code is still
-# audited like the rest.
-[target.'cfg(target_env = "musl")'.dependencies]
-openssl = { version = "0.10", features = ["vendored"] }
-
 [build-dependencies]
 brigid-ui-embed = { git = "https://github.com/brig-id/core", branch = "main", package = "brigid-ui-embed" }
 
@@ -55,9 +48,9 @@ tower = { version = "0.5", features = ["util"] }
 reqwest = { version = "0.13", features = ["json"] }
 # The same version as brig-id/core, which holds the server side of the
 # ceremony: these move when the core moves, not by themselves.
-webauthn-authenticator-rs = { version = "0.5", features = ["softpasskey"] }
-webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation"] }
-webauthn-rs-proto = "0.5"
+webauthn-authenticator-rs = { version = "0.6", features = ["softpasskey"] }
+webauthn-rs = { version = "0.6", features = ["danger-allow-state-serialisation"] }
+webauthn-rs-proto = "0.6"
 
 [profile.release]
 panic = "abort"

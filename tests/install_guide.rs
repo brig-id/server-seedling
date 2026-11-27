@@ -17,7 +17,7 @@ use std::process::Command;
 
 use common::{answer_discoverable, for_soft_passkey};
 use serde_json::{Value, json};
-use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
+use webauthn_authenticator_rs::{WebauthnAuthenticator as _, softpasskey::SoftPasskey};
 use webauthn_rs::prelude::{CreationChallengeResponse, RequestChallengeResponse};
 
 const GUIDE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/install.md"));
@@ -380,7 +380,7 @@ async fn a_person_signs_in_on_the_site_the_guide_registered() {
         .build()
         .unwrap();
     let origin = url::Url::parse(&issuer).unwrap();
-    let mut passkey = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let mut passkey = SoftPasskey::new(true);
 
     // -- step 5: the first administrator, from the link the machine printed --
     let link = address
