@@ -1,6 +1,8 @@
 [package]
 name = "seedling"
-version = "0.12.2"
+# The version of a release is its tag: the release build writes it here before
+# compiling (scripts/set-version.sh). Any other build says 0.0.0.
+version = "0.0.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 publish = false
@@ -14,9 +16,10 @@ path = "src/main.rs"
 path = "src/lib.rs"
 
 [dependencies]
-# The server every edition runs, and the crates of brig·id it is made of
-# (git dependencies pointing to the core repository).
-brigid-server = { git = "https://github.com/brig-id/core", tag = "v0.3.1", package = "brigid-server" }
+# The server every edition runs, and the crates of brig·id it is made of:
+# the core at a commit of its main, which Cargo.lock holds. `cargo update -p
+# brigid-server` follows a newer one (the three crates move together).
+brigid-server = { git = "https://github.com/brig-id/core", branch = "main", package = "brigid-server" }
 
 clap = { version = "4", features = ["derive", "env"] }
 tokio = { version = "1", features = ["full"] }
@@ -31,12 +34,11 @@ url = "2"
 openssl = { version = "0.10", features = ["vendored"] }
 
 [build-dependencies]
-brigid-ui-embed = { git = "https://github.com/brig-id/core", tag = "v0.3.1", package = "brigid-ui-embed" }
+brigid-ui-embed = { git = "https://github.com/brig-id/core", branch = "main", package = "brigid-ui-embed" }
 
 [dev-dependencies]
 # Re-open the database a test server wrote (tests/binary.rs).
-brigid-store = { git = "https://github.com/brig-id/core", tag = "v0.3.1", package = "brigid-store" }
-brigid-crypto = { git = "https://github.com/brig-id/crypto", tag = "v0.2.0" }
+brigid-store = { git = "https://github.com/brig-id/core", branch = "main", package = "brigid-store" }
 # The interface as the server serves it (tests/static_files.rs) and the JSON
 # the tests read.
 axum = "0.8"
@@ -52,8 +54,7 @@ tower = { version = "0.5", features = ["util"] }
 # subprocess, exercising a full WebAuthn ceremony via a software passkey.
 reqwest = { version = "0.13", features = ["json"] }
 # The same version as brig-id/core, which holds the server side of the
-# ceremony: these move when the core moves, not by themselves
-# (.github/dependabot.yml).
+# ceremony: these move when the core moves, not by themselves.
 webauthn-authenticator-rs = { version = "0.5", features = ["softpasskey"] }
 webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation"] }
 webauthn-rs-proto = "0.5"

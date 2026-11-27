@@ -135,7 +135,7 @@ async fn graceful_shutdown_on_sigterm_exits_cleanly() {
     // master key is the real proof the on-disk database isn't corrupted —
     // a truncated/torn write would fail here.
     let db_url = format!("sqlite:{}?mode=rwc", db_path.display());
-    let master = brigid_crypto::MasterKey::from_hex(TEST_MASTER_KEY).expect("parse master key");
+    let master = brigid_store::MasterKey::from_hex(TEST_MASTER_KEY).expect("parse master key");
     brigid_store::EncryptedStore::new(&db_url, master)
         .await
         .expect("re-opening the DB after graceful shutdown should succeed");
