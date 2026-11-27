@@ -33,10 +33,11 @@ TODOs, backlog ideas, and phase/release status for this repo are tracked as card
 - **`BRIGID_MASTER_KEY` must never appear in `seedling.toml`** — env var or separate secret file only.
 - **Refuse to start** if `MASTER_KEY` is absent or decodes to fewer than 32 bytes.
 - **TLS 1.3 only** on the built-in listener (ACME or certificate files) — rustls `ServerConfig`
-  in core's `brigid-server`; no OpenSSL for TLS.
-  The build container installs `libssl-dev` for `webauthn-rs`'s attestation chain
-  validator only (see `core/AGENTS.md` for the documented scope of that exception);
-  attestation never touches the TLS stack.
+  in core's `brigid-server`. **No OpenSSL anywhere**: TLS is rustls on aws-lc, and passkeys
+  are verified with RustCrypto since webauthn-rs 0.6 (`cargo tree -i openssl-sys` prints
+  nothing).
+- **No advisory exception.** `deny.toml` has an empty `ignore` list and there is no
+  `.cargo/audit.toml`: an advisory that appears is fixed by an update first.
 - **Distroless Docker image** (`gcr.io/distroless/cc-debian12`) — no shell, no package manager.
 - **Non-root user** — `USER nonroot:nonroot` in the final Docker stage.
 - **Read-only container filesystem** — `read_only: true` + tmpfs on `/tmp` wherever the image

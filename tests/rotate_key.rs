@@ -25,7 +25,7 @@ use common::{
     wait_until_listening,
 };
 use serde_json::json;
-use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
+use webauthn_authenticator_rs::{WebauthnAuthenticator as _, softpasskey::SoftPasskey};
 use webauthn_rs::prelude::{CreationChallengeResponse, RequestChallengeResponse};
 
 const NEW_KEY: &str = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90";
@@ -80,7 +80,7 @@ async fn rotate_key_cli_round_trip_login_works_with_new_key() {
     let child = start_seedling(OLD_KEY, port, &db_path).await;
 
     let origin = url::Url::parse(&base_url).unwrap();
-    let mut auth_client = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let mut auth_client = SoftPasskey::new(true);
 
     let resp = client
         .post(format!("{base_url}/auth/register/begin"))
@@ -231,7 +231,7 @@ fn client_for(base_url: &str) -> reqwest::Client {
 async fn sign_in_and_list_identities(
     client: &reqwest::Client,
     base_url: &str,
-    auth_client: &mut WebauthnAuthenticator<SoftPasskey>,
+    auth_client: &mut SoftPasskey,
     origin: &url::Url,
     (credential_id, account_id): (&str, &[u8]),
 ) -> Vec<(String, String)> {

@@ -20,7 +20,7 @@ use common::{
     seedling_bin, wait_until_listening,
 };
 use serde_json::{Value, json};
-use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
+use webauthn_authenticator_rs::{WebauthnAuthenticator as _, softpasskey::SoftPasskey};
 use webauthn_rs::prelude::{CreationChallengeResponse, RequestChallengeResponse};
 
 struct TestServer {
@@ -290,7 +290,7 @@ fn a_directory_without_its_list_of_hashes_is_not_served() {
 async fn webauthn_register_and_login_round_trip_opens_a_session() {
     let server = start_seedling();
     let origin = url::Url::parse(&server.base_url).unwrap();
-    let mut auth_client = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let mut auth_client = SoftPasskey::new(true);
 
     // -- register/begin --
     let resp = server
@@ -372,7 +372,7 @@ async fn webauthn_register_and_login_round_trip_opens_a_session() {
 async fn deleting_the_only_passkey_is_refused() {
     let server = start_seedling();
     let origin = url::Url::parse(&server.base_url).unwrap();
-    let mut auth_client = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let mut auth_client = SoftPasskey::new(true);
 
     let resp = server
         .client
@@ -584,7 +584,7 @@ async fn a_site_registered_from_the_command_line_signs_a_person_in() {
 
     // -- a person signs up: the session is in a cookie --
     let origin = url::Url::parse(base).unwrap();
-    let mut passkey = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let mut passkey = SoftPasskey::new(true);
     let resp = server
         .client
         .post(format!("{base}/auth/register/begin"))
@@ -995,8 +995,8 @@ async fn a_new_server_takes_its_first_administrator_from_the_link_it_prints() {
 
     // Used, it makes the first account, an administrator; once.
     let origin = url::Url::parse(base).unwrap();
-    let mut passkey = WebauthnAuthenticator::new(SoftPasskey::new(true));
-    let sign_up = async |passkey: &mut WebauthnAuthenticator<SoftPasskey>, link: &str| {
+    let mut passkey = SoftPasskey::new(true);
+    let sign_up = async |passkey: &mut SoftPasskey, link: &str| {
         let resp = server
             .client
             .post(format!("{base}/auth/register/begin"))
@@ -1032,12 +1032,9 @@ async fn a_new_server_takes_its_first_administrator_from_the_link_it_prints() {
     let printed = link;
     let link = fresh.split("link=").nth(1).unwrap().to_owned();
     assert_ne!(link, printed);
-    let refused = sign_up(
-        &mut WebauthnAuthenticator::new(SoftPasskey::new(true)),
-        &printed,
-    )
-    .await
-    .unwrap_err();
+    let refused = sign_up(&mut SoftPasskey::new(true), &printed)
+        .await
+        .unwrap_err();
     assert_eq!(refused["code"], "link_invalid");
 
     let cookie = sign_up(&mut passkey, &link)
@@ -1054,12 +1051,9 @@ async fn a_new_server_takes_its_first_administrator_from_the_link_it_prints() {
     )
     .await;
     assert_eq!(session["admin"], true);
-    let refused = sign_up(
-        &mut WebauthnAuthenticator::new(SoftPasskey::new(true)),
-        &link,
-    )
-    .await
-    .unwrap_err();
+    let refused = sign_up(&mut SoftPasskey::new(true), &link)
+        .await
+        .unwrap_err();
     assert_eq!(refused["code"], "link_invalid");
 
     // The administrator reads the accounts, and nothing of anyone's
@@ -1117,7 +1111,7 @@ async fn a_server_with_accounts_and_no_administrator_gets_one_from_the_machine()
     let server = start_seedling();
     let base = &server.base_url;
     let origin = url::Url::parse(base).unwrap();
-    let mut passkey = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let mut passkey = SoftPasskey::new(true);
     let resp = server
         .client
         .post(format!("{base}/auth/register/begin"))

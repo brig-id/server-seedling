@@ -2,6 +2,10 @@
 //! a subprocess (as opposed to `tests/static_files.rs`, which exercises
 //! `apply_ui_fallback` in-process against a bare `axum::Router`).
 
+// The ceremonies of a software passkey (`do_authentication`).
+#[allow(unused_imports)]
+use webauthn_authenticator_rs::WebauthnAuthenticator as _;
+
 use std::{
     net::{SocketAddr, TcpListener, TcpStream},
     path::PathBuf,
@@ -75,9 +79,7 @@ pub fn wait_until_listening(addr: SocketAddr, timeout: Duration) -> bool {
 /// authenticator returns, the account id (the registration's `user.id`).
 #[allow(dead_code)]
 pub fn answer_discoverable(
-    passkey: &mut webauthn_authenticator_rs::WebauthnAuthenticator<
-        webauthn_authenticator_rs::softpasskey::SoftPasskey,
-    >,
+    passkey: &mut webauthn_authenticator_rs::softpasskey::SoftPasskey,
     origin: &url::Url,
     mut challenge: webauthn_rs::prelude::RequestChallengeResponse,
     credential_id: &str,
@@ -94,7 +96,7 @@ pub fn answer_discoverable(
     let mut answer = passkey
         .do_authentication(origin.clone(), challenge)
         .expect("software passkey authentication ceremony");
-    answer.response.user_handle = Some(account_id.to_vec().into());
+    answer.response.user_handle = Some(account_id.to_vec());
     answer
 }
 
