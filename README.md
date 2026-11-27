@@ -7,7 +7,8 @@ choose for each website.
 
 - **Install it:** [docs/install.md](docs/install.md), from a machine of your
   own to a person signed in on a website.
-- **What changed:** [CHANGELOG.md](CHANGELOG.md).
+- **What changed:** the notes of each
+  [release](https://github.com/brig-id/server-seedling/releases).
 - **Report a vulnerability:** [SECURITY.md](SECURITY.md).
 
 The engine lives in [brig-id/core](https://github.com/brig-id/core), the
